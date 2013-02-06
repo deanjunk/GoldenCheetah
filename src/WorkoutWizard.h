@@ -102,6 +102,15 @@ public:
     }
 };
 
+class WorkoutItemMsg : public QTableWidgetItem
+{
+public:
+    WorkoutItemMsg() : QTableWidgetItem(QTableWidgetItem::UserType) {
+        setText("MSG");
+        setFlags(flags() & (~Qt::ItemIsEditable));
+    }
+};
+
 class WorkoutEditorBase : public QFrame
 {
     Q_OBJECT
@@ -109,16 +118,50 @@ protected:
     QTableWidget *table;
 
 public slots:
-    void addButtonClicked() { insertDataRow(table->rowCount()); }
     void delButtonClicked() { table->removeRow(table->currentRow()); }
     void lapButtonClicked()
     {
         int row = table->currentRow();
+
+        if (row < table->rowCount() && row > 0) {
+            row++;
+        } else if (table->rowCount() == 0) {
+            row = 0;
+        }
+
         table->insertRow(row);
         table->setItem(row,0,new WorkoutItemLap());
         table->setItem(row,1,new QTableWidgetItem());
     }
-    void insertButtonClicked() { insertDataRow(table->currentRow()); }
+    
+    void insertButtonClicked()
+    {
+        int row = table->currentRow();
+        
+        if (row < table->rowCount() && row > 0) {
+            row++;
+        } else if (table->rowCount() == 0) {
+            row = 0;
+        }
+        
+        insertDataRow(row);
+    }
+
+    void msgButtonClicked()
+    {
+        int row = table->currentRow();
+        
+        if (row < table->rowCount() && row > 0) {
+            row++;
+        } else if (table->rowCount() == 0) {
+            row = 0;
+        }
+        
+        table->insertRow(row);
+        table->setItem(row,0,new WorkoutItemMsg());
+        table->setItem(row,1,new QTableWidgetItem());
+    }
+    
     void cellChanged(int, int) { dataChanged(); }
 
 signals:
@@ -167,7 +210,7 @@ public slots:
         {
             QTableWidgetItem *minItem = table->item(row,0);
             QTableWidgetItem *percentageItem = table->item(row,1);
-            if(minItem->text() == "" || minItem->text() == "LAP" || percentageItem->text() == "") return;
+            if(minItem->text() == "" || minItem->text() == "LAP" || percentageItem->text() == "" || minItem->text() == "MSG") return;
             double percentage = percentageItem->text() .toDouble();
             WorkoutItemInt *item = new WorkoutItemInt();
             int wattage = (int) (percentage * ftp / 100);

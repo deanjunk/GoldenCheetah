@@ -28,6 +28,7 @@
 #include "DeviceTypes.h"
 #include "ErgFile.h"
 #include "ErgFilePlot.h"
+#include "DisplayLapMsg.h"
 
 // standard stuff
 #include <QDir>
@@ -138,6 +139,14 @@ class TrainTool : public GcWindow
 
         void selectVideo(QString fullpath);
         void selectWorkout(QString fullpath);
+    
+        //Close the messagebox and destroy the object
+        void closeMsgFromFile()
+        {
+            msgFromFile->close();
+            delete msgFromFile;
+        };
+
         //XXX void workoutTreeMenuPopup(const QPoint &);
         //XXX void mediaTreeMenuPopup(const QPoint &);
 
@@ -168,7 +177,7 @@ class TrainTool : public GcWindow
 
         // User adjusted intensity
         void adjustIntensity();     // Intensity of workout user adjusted
-
+	
     protected:
 
         friend class ::MultiDeviceDialog;
@@ -237,7 +246,10 @@ class TrainTool : public GcWindow
                     *stream_timer,  // send telemetry to server
                     *load_timer,    // change the load on the device
                     *disk_timer;    // write to .CSV file
-
+    
+        QMessageBox *msgFromFile; // Display User messages from file
+        int curMsgPos;
+    
     public:
         int mode;
         // everyone else wants this

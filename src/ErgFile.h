@@ -55,10 +55,17 @@ class ErgFilePoint
         double val;   // the value to send to the device (watts/gradient)
 };
 
+class ErgFileMsg
+{
+    public:
+        long pos;      // when does this Msg marker occur? (time in msecs or distance in meters
+        QString message; // Message to display
+};
+
 class ErgFileLap
 {
     public:
-        long x;     // when does this LAP marker occur? (time in msecs or distance in meters
+        long x;         // when does this LAP marker occur? (time in msecs or distance in meters
         int LapNum;     // from 1 - n
         QString name;
 };
@@ -80,9 +87,10 @@ class ErgFile
         bool isValid();         // is the file valid or not?
         double Cp;
         int format;             // ERG, CRS or MRC currently supported
-        int wattsAt(long, int&);      // return the watts value for the passed msec
-        double gradientAt(long, int&);      // return the gradient value for the passed meter
-        int nextLap(long);      // return the msecs value for the next Lap marker
+        int wattsAt(long, int&);       // return the watts value for the passed msec
+        double gradientAt(long, int&); // return the gradient value for the passed meter
+        int nextLap(long);                  // return the msecs value for the next Lap marker
+        ErgFileMsg msgAtPos(int); // return the message
 
         QString Version,        // version number / identifer
                 Units,          // units used
@@ -101,6 +109,7 @@ class ErgFile
 
         QList<ErgFilePoint> Points;    // points in workout
         QList<ErgFileLap>   Laps;      // interval markers in the file
+        QList<ErgFileMsg>   Msgs;      // Message markers in the file
 
         void calculateMetrics(); // calculate NP value for ErgFile
 

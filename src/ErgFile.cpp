@@ -307,9 +307,16 @@ void ErgFile::parseComputrainer(QString p)
     QRegExp lapmarker("^[ \\t]*([0-9\\.]+)[ \\t]*LAP[ \\t\\n]*(.*)$", Qt::CaseInsensitive);
     QRegExp crslapmarker("^[ \\t]*LAP[ \\t\\n]*(.*)$", Qt::CaseInsensitive);
 
+    // Message marker in ERG/MRC file
+    //QRegExp msgmarker("^(.*)MSG{1}(.*)$", Qt::CaseInsensitive);
+    QRegExp msgmarker("^([0-9\\.]+).*MSG{1}.*\"(.*)\".*$", Qt::CaseInsensitive);
+    QRegExp crsmsgmarker("^[ \\t]*MSG[ \\t\"([^\"']*)\"\\n]*(.*)$", Qt::CaseInsensitive);
+    
     // ok. opened ok lets parse.
     QTextStream inputStream(&ergFile);
     QTextStream stringStream(&p);
+
+    //QMessageBox msgBox;
     if (p != "") inputStream.setString(&p); // use a string not a file!
     while ((p=="" && !inputStream.atEnd()) || (p!="" && !stringStream.atEnd())) {
 
@@ -364,6 +371,29 @@ void ErgFile::parseComputrainer(QString p)
                 add.LapNum = ++lapcounter;
                 add.name = lapmarker.cap(2).simplified();
                 Laps.append(add);
+            } else if (msgmarker.exactMatch(line)) {
+                // msg marker found
+                ErgFileMsg add;
+                //QMessageBox msgBox;
+                //QString capture1 = "Found msgMarker [" + msgmarker.cap(1) + "] [" + msgmarker.cap(2) + "]";
+                //msgBox.setText(capture1);
+                //msgBox.setIcon(QMessageBox::Information);
+                //msgBox.exec();
+
+                add.pos = msgmarker.cap(1).toInt() * 60; // from mins to seconds
+                add.message = msgmarker.cap(2).simplified();
+                Msgs.append(add);
+                
+            } else if (crsmsgmarker.exactMatch(line)) {
+                //msgBox.setText("Found csrMsgMarker");
+                //msgBox.setIcon(QMessageBox::Information);
+                //msgBox.exec();
+                // new distance msg marker
+                ErgFileMsg add;
+                
+                add.pos = rdist;
+                add.message = msgmarker.cap(2).simplified();
+                Msgs.append(add);
 
             } else if (settings.exactMatch(line)) {
                 // we have name = value setting
@@ -455,6 +485,10 @@ void ErgFile::parseComputrainer(QString p)
             } else {
               // ignore bad lines for now. just bark.
               //qDebug()<<"huh?" << line;
+              //  msgBox.setText(line);
+              //  msgBox.setIcon(QMessageBox::Information);
+              //  msgBox.exec();
+
             }
 
         }
@@ -600,17 +634,36 @@ ErgFile::gradientAt(long x, int &lapnum)
     return Points.at(leftPoint).val;
 }
 
+ErgFileMsg ErgFile::msgAtPos(int x)
+{
+    ErgFileMsg returnMsg; //Default to return if we don't find one
+    returnMsg.pos = -999;
+    
+    if (isValid()) {
+        // do we need to return the Lap marker?
+        if (Msgs.count() > 0) {
+            for (int i=0; i < Msgs.count(); i++) {
+                if (x == Msgs.at(i).pos) {
+                    returnMsg = Msgs.at(i);
+                }
+            }
+        }
+    }
+    
+    return returnMsg;
+}
+
 int ErgFile::nextLap(long x)
 {
     if (!isValid()) return -1; // not a valid ergfile
 
-    // do we need to return the Lap marker?
+    // do we need to return the Msg marker?
     if (Laps.count() > 0) {
         for (int i=0; i<Laps.count(); i++) {
             if (x<Laps.at(i).x) return Laps.at(i).x;
         }
     }
-    return -1; // nope, no marker ahead of there
+    return -1; // nope, no msg ahead of there
 }
 
 void

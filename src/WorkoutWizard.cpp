@@ -77,26 +77,26 @@ WorkoutEditorBase::WorkoutEditorBase(QStringList &colms, QWidget *parent =0 ) :Q
 
 
     QHBoxLayout *row2Layout = new QHBoxLayout();
+    QPushButton *insertButton = new QPushButton();
+    insertButton->setText(tr("Insert"));
+    insertButton->setToolTip(tr("Add a row"));
+    connect(insertButton,SIGNAL(clicked()),this,SLOT(insertButtonClicked()));
+    row2Layout->addWidget(insertButton);
     QPushButton *delButton = new QPushButton();
     delButton->setText(tr("Delete"));
     delButton->setToolTip(tr("Delete the highlighted row"));
     connect(delButton,SIGNAL(clicked()),this,SLOT(delButtonClicked()));
     row2Layout->addWidget(delButton);
-    QPushButton *addButton = new QPushButton();
-    addButton->setText(tr("Add"));
-    addButton->setToolTip(tr("Add row at end"));
-    connect(addButton,SIGNAL(clicked()),this,SLOT(addButtonClicked()));
-    row2Layout->addWidget(addButton);
-    QPushButton *insertButton = new QPushButton();
-    insertButton->setText(tr("Insert"));
-    insertButton->setToolTip(tr("Add a Lap below the highlighted row"));
-    connect(insertButton,SIGNAL(clicked()),this,SLOT(insertButtonClicked()));
-    row2Layout->addWidget(insertButton);
     QPushButton *lapButton = new QPushButton();
     lapButton->setText(tr("Lap"));
-    lapButton->setToolTip(tr("Add a Lap below the highlighted row"));
+    lapButton->setToolTip(tr("Add a lap"));
     row2Layout->addWidget(lapButton);
     connect(lapButton,SIGNAL(clicked()),this,SLOT(lapButtonClicked()));
+    QPushButton *msgButton = new QPushButton();
+    msgButton->setText(tr("Message"));
+    msgButton->setToolTip(tr("Add a message"));
+    connect(msgButton,SIGNAL(clicked()),this,SLOT(msgButtonClicked()));
+    row2Layout->addWidget(msgButton);
     layout->addLayout(row1Layout);
     layout->addLayout(row2Layout);
     setLayout(layout);
@@ -270,6 +270,7 @@ void AbsWattagePage::initializePage()
     QStringList colms;
     colms.append(tr("Minutes"));
     colms.append(tr("Wattage"));
+    colms.append(tr("Message"));
     we = new WorkoutEditorAbs(colms);
     layout->addWidget(we);
     QVBoxLayout *summaryLayout = new QVBoxLayout();
@@ -303,7 +304,7 @@ void AbsWattagePage::updateMetrics()
     double curMin = 0;
     for(int i = 0; i < data.size() ; i++)
     {
-        if(data[i].first == "LAP") continue;
+        if(data[i].first == "LAP" || data[i].first == "MSG") continue;
 
         double min = data[i].first.toDouble();
         double watts = data[i].second.toDouble();
@@ -353,12 +354,16 @@ void AbsWattagePage::SaveWorkout()
     {
         filename.append(".erg");
     }
+    
+    QFileInfo fi(filename);
+    QString description = fi.baseName(); //Use the filename for a description
+
     // open the file
     QFile f(filename);
     f.open(QIODevice::WriteOnly | QIODevice::Text);
     QTextStream stream(&f);
     // create the header
-    SaveWorkoutHeader(stream,f.fileName(),QString("golden cheetah"),QString("MINUTES WATTS"));
+    SaveWorkoutHeader(stream,f.fileName(),description,QString("MINUTES WATTS"));
     QVector<QPair<QString, QString> > rawData;
     we->rawData(rawData);
     double currentX = 0;
@@ -366,12 +371,11 @@ void AbsWattagePage::SaveWorkout()
     QPair<QString, QString > p;
     foreach (p,rawData)
     {
-        if(p.first == "LAP")
-        {
+        if(p.first == "LAP") {
             stream << currentX << " LAP" << endl;
-        }
-        else
-        {
+        } else if (p.first == "MSG") {
+            stream << currentX << " MSG \"" << p.second<< "\"" << endl;
+        } else {
             stream << currentX << " " << p.second << endl;
             currentX += p.first.toDouble();
             stream << currentX << " " << p.second << endl;
@@ -406,6 +410,7 @@ void RelWattagePage::initializePage()
     colms.append(tr("Minutes"));
     colms.append(tr("% of FTP"));
     colms.append(tr("Wattage"));
+    colms.append(tr("Message"));
     we = new WorkoutEditorRel(colms,ftp);
     layout->addWidget(we);
     QVBoxLayout *summaryLayout = new QVBoxLayout();
@@ -432,7 +437,7 @@ void RelWattagePage::updateMetrics()
     workout->setRecIntSecs(1);
     for(int i = 0; i < data.size() ; i++)
     {
-        if(data[i].first == "LAP") continue;
+        if(data[i].first == "LAP" || data[i].first == "MSG") continue;
         double min = data[i].first.toDouble();
         double percentFtp = data[i].second.toDouble();
         int secs = min * 60;
@@ -480,12 +485,16 @@ void RelWattagePage::SaveWorkout()
     {
         filename.append(".mrc");
     }
+    
+    QFileInfo fi(filename);
+    QString description = fi.baseName(); //Use the filename for a description
+
     // open the file
     QFile f(filename);
     f.open(QIODevice::WriteOnly | QIODevice::Text);
     QTextStream stream(&f);
     // create the header
-    SaveWorkoutHeader(stream,f.fileName(),QString("golden cheetah"),QString("MINUTES PERCENTAGE"));
+    SaveWorkoutHeader(stream,f.fileName(),description,QString("MINUTES PERCENTAGE"));
     QVector<QPair<QString, QString> > rawData;
     we->rawData(rawData);
     double currentX = 0;
@@ -493,12 +502,11 @@ void RelWattagePage::SaveWorkout()
     QPair<QString, QString > p;
     foreach (p,rawData)
     {
-        if(p.first == "LAP")
-        {
+        if (p.first == "LAP") {
             stream << currentX << " LAP" << endl;
-        }
-        else
-        {
+        } else if (p.first == "MSG") {
+            stream << currentX << " MSG \"" << p.second << "\"" << endl;
+        } else {
             stream << currentX << " " << p.second << endl;
             currentX += p.first.toDouble();
             stream << currentX << " " << p.second << endl;
@@ -526,6 +534,7 @@ void GradientPage::initializePage()
 
     colms.append(tr(metricUnits ? "KM" : "Miles"));
     colms.append(tr("Grade"));
+    colms.append(tr("Message"));
     we = new WorkoutEditorGradient(colms);
     layout->addWidget(we);
     QVBoxLayout *summaryLayout = new QVBoxLayout();
@@ -551,7 +560,7 @@ void GradientPage::updateMetrics()
     workout->setRecIntSecs(1);
     for(int i = 0; i < data.size() ; i++)
     {
-        if(data[i].first == "LAP") continue;
+        if(data[i].first == "LAP" || data[i].first == "MSG") continue;
         double distance = data[i].first.toDouble();
         double grade = data[i].second.toDouble();
         double delta = distance  * (metricUnits ? 1000 : 5120) * grade /100;
@@ -577,12 +586,16 @@ void GradientPage::SaveWorkout()
     {
         filename.append(".crs");
     }
+    
+    QFileInfo fi(filename);
+    QString description = fi.baseName(); //Use the filename for a description
+
     // open the file
     QFile f(filename);
     f.open(QIODevice::WriteOnly | QIODevice::Text);
     QTextStream stream(&f);
     // create the header
-    SaveWorkoutHeader(stream,f.fileName(),QString("golden cheetah"),QString("DISTANCE GRADE WIND"));
+    SaveWorkoutHeader(stream,f.fileName(),description,QString("DISTANCE GRADE WIND"));
     QVector<QPair<QString, QString> > rawData;
     we->rawData(rawData);
     double currentX = 0;
@@ -723,12 +736,16 @@ void ImportPage::SaveWorkout()
     {
         filename.append(".crs");
     }
+    
+    QFileInfo fi(filename);
+    QString description = fi.baseName(); //Use the filename for a description
+
     // open the file
     QFile f(filename);
     f.open(QIODevice::WriteOnly | QIODevice::Text);
     QTextStream stream(&f);
     // create the header
-    SaveWorkoutHeader(stream,f.fileName(),QString("golden cheetah"),QString("DISTANCE GRADE WIND"));
+    SaveWorkoutHeader(stream,f.fileName(),description,QString("DISTANCE GRADE WIND"));
     stream << "[COURSE DATA]" << endl;
     QPair<double,double> p;
     double prevDistance = 0;

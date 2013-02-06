@@ -356,6 +356,7 @@ TrainTool::TrainTool(MainWindow *parent, const QDir &home) : GcWindow(parent), h
     session_elapsed_msec = 0;
     lap_time = QTime();
     lap_elapsed_msec = 0;
+    curMsgPos = -1;
 
     recordFile = NULL;
     status = 0;
@@ -706,6 +707,19 @@ void TrainTool::Start()       // when start button is pressed
         // tell the world
         main->notifyUnPause();
 
+    	//QSize mSize = .sizeHint(); 
+    	//QRect screenRect = QDesktopWidget().screen()->rect();
+    	//LapMsg.move( QPoint( screenRect.width()/2 - mSize.width()/2, screenRect.height()/2 - mSize.height()/2 ) );
+
+        //msgFromFile = new QMessageBox(this);
+        //msgFromFile->setStandardButtons(QMessageBox::Ok);
+        //msgFromFile->setText("This MessageBox Closes After 5 Seconds");
+        //msgFromFile->setWindowFlags (Qt::Dialog | Qt::FramelessWindowHint);
+        //msgFromFile->show();
+        //msgFromFile->setStandardButtons(QMessageBox::NoButton);
+        //Close QMessageBox Automatically when timer expires
+        //QTimer::singleShot(5000, this, SLOT(closeMsgFromFile()));
+		
     } else if (status&RT_RUNNING) {
 
         // Pause!
@@ -765,6 +779,7 @@ void TrainTool::Start()       // when start button is pressed
 
         load = 0;
         slope = 0.0;
+        curMsgPos = -1;
 
         if (mode == ERG || mode == MRC) {
             status |= RT_MODE_ERGO;
@@ -1053,6 +1068,35 @@ void TrainTool::guiUpdate()           // refreshes the telemetry
             rtData.setMsecs(total_msecs);
             rtData.setLapMsecs(lap_msecs);
 
+            //QMessageBox mBox;
+            //QString mtext = "Before if [curMsgPos = " + QString::number(curMsgPos) + "] [total_msecs = " + QString::number(total_msecs) + "]";
+            //mBox.setText(mtext);
+            //mBox.setIcon(QMessageBox::Information);
+            //mBox.exec();
+            //int loadSeconds = load_msecs/1000;
+            
+            if ((int)load_msecs/1000 != curMsgPos) {
+                //QMessageBox mBox;
+                //QString mtext = "if [curMsgPos = " + QString::number(curMsgPos) + "] [total_secs = " + QString::number(load_msecs/1000) + "]";
+                //mBox.setText(mtext);
+                //mBox.setIcon(QMessageBox::Information);
+                //mBox.exec();
+                ErgFileMsg msgData;
+                msgData = ergFile->msgAtPos((int)load_msecs/1000);
+            
+                if (ergFile && msgData.pos > -1 && msgData.pos != curMsgPos) {
+                    curMsgPos = msgData.pos;
+                    msgFromFile = new QMessageBox(this);
+                    msgFromFile->setStandardButtons(QMessageBox::Ok);
+                    msgFromFile->setText(msgData.message);
+                    msgFromFile->setWindowFlags (Qt::Dialog | Qt::FramelessWindowHint);
+                    msgFromFile->show();
+                    msgFromFile->setStandardButtons(QMessageBox::NoButton);
+                    //Close QMessageBox Automatically when timer expires
+                    QTimer::singleShot(5000, this, SLOT(closeMsgFromFile()));
+                }
+            }
+                
             long lapTimeRemaining;
             if (ergFile) lapTimeRemaining = ergFile->nextLap(load_msecs) - load_msecs;
             else lapTimeRemaining = 0;
