@@ -24,8 +24,47 @@
 #include "Colors.h"
 #include <QtGui>
 
+#define PI M_PI
+
+PfPvDoubleClickPicker::PfPvDoubleClickPicker( PfPvPlot *plot):
+    QwtPlotPicker( plot->canvas() ), pfPvPlot(plot)
+{
+    setRubberBand(QwtPicker::CrossRubberBand);
+    setTrackerMode(QwtPicker::AlwaysOn);
+}
+
+void
+PfPvDoubleClickPicker::widgetMouseDoubleClickEvent( QMouseEvent *me )
+{
+    QPointF p1 = invTransform(me->pos());
+    QPoint p2 = pfPvTransform(p1);
+
+    // emit the itemMoved signal
+    Q_EMIT doubleClicked(p2.x(), p2.y());
+}
+
+QPoint
+PfPvDoubleClickPicker::pfPvTransform( const QPointF p ) const
+{
+    double cad = p.x() * 60.0 / pfPvPlot->getCL() / 2.0 / PI;
+    double watts = p.y() * cad * pfPvPlot->getCL()  * 2.0 * PI / 60.0;
+
+    return QPoint(cad , watts);
+}
+
+QwtText
+PfPvDoubleClickPicker::trackerTextF( const QPointF &pos ) const
+{
+    QPointF p = pfPvTransform(pos);
+
+    //text.sprintf( tr("%.2f m/s (%.0f rpm), %.2f N (%.0f watts)"), pos.x(), p.x(), pos.y(), p.y() );
+    QString text = QString(tr("%1 rpm, %2 watts")).arg(p.x()).arg(p.y());
+
+    return QwtText( text );
+}
+
 PfPvWindow::PfPvWindow(MainWindow *mainWindow) :
-    GcWindow(mainWindow), mainWindow(mainWindow), current(NULL)
+    GcChartWindow(mainWindow), mainWindow(mainWindow), current(NULL)
 {
     setInstanceName("Pf/Pv Window");
 
@@ -33,38 +72,15 @@ PfPvWindow::PfPvWindow(MainWindow *mainWindow) :
     QVBoxLayout *cl = new QVBoxLayout(c);
     setControls(c);
 
-    // Main layout
-    QGridLayout *mainLayout = new QGridLayout(this);
-    mainLayout->setContentsMargins(2,2,2,2);
-
     //
     // reveal controls widget
     //
-
-    // reveal widget
-    revealControls = new QWidget(this);
-    revealControls->setFixedHeight(50);
-    revealControls->setStyleSheet("background-color: rgba(100%, 100%, 100%, 100%)");
-    revealControls->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
-
-    revealAnim = new QPropertyAnimation(revealControls, "pos");
-    revealAnim->setDuration(500);
-    revealAnim->setEasingCurve(QEasingCurve(QEasingCurve::InSine));
-    revealAnim->setKeyValueAt(0,QPoint(2,-50));
-    revealAnim->setKeyValueAt(0.5,QPoint(2,15));
-    revealAnim->setKeyValueAt(1,QPoint(2,20));
-
-    unrevealAnim = new QPropertyAnimation(revealControls, "pos");
-    unrevealAnim->setDuration(500);
-    unrevealAnim->setKeyValueAt(0,QPoint(2,20));
-    unrevealAnim->setKeyValueAt(0.5,QPoint(2,15));
-    unrevealAnim->setKeyValueAt(1,QPoint(2,-50));
 
     // layout reveal controls
     QHBoxLayout *revealLayout = new QHBoxLayout;
     revealLayout->setContentsMargins(0,0,0,0);
 
-    rShade = new QCheckBox(tr("Shade zones"), revealControls);
+    rShade = new QCheckBox(tr("Shade zones"));
     if (appsettings->value(this, GC_SHADEZONES, true).toBool() == true)
         rShade->setCheckState(Qt::Checked);
     else
@@ -88,20 +104,14 @@ PfPvWindow::PfPvWindow(MainWindow *mainWindow) :
     revealLayout->addLayout(checks);
     revealLayout->addStretch();
 
-    revealControls->setLayout(revealLayout);
-
-    // hide them initially
-    revealControls->hide();
+    setRevealLayout(revealLayout);
 
     // the plot
     QVBoxLayout *vlayout = new QVBoxLayout;
     pfPvPlot = new PfPvPlot(mainWindow);
     vlayout->addWidget(pfPvPlot);
 
-    mainLayout->addLayout(vlayout,0,0);
-    mainLayout->addWidget(revealControls,0,0, Qt::AlignTop);
-    revealControls->raise();
-    setLayout(mainLayout);
+    setChartLayout(vlayout);
 
     // allow zooming
     pfpvZoomer = new QwtPlotZoomer(pfPvPlot->canvas());
@@ -112,6 +122,9 @@ PfPvWindow::PfPvWindow(MainWindow *mainWindow) :
     pfpvZoomer->setMousePattern(QwtEventPattern::MouseSelect1, Qt::LeftButton);
     pfpvZoomer->setMousePattern(QwtEventPattern::MouseSelect2, Qt::RightButton, Qt::ControlModifier);
     pfpvZoomer->setMousePattern(QwtEventPattern::MouseSelect3, Qt::RightButton);
+
+    // double click
+    doubleClickPicker = new PfPvDoubleClickPicker(pfPvPlot);
 
     // the controls
     QFormLayout *f = new QFormLayout;
@@ -175,6 +188,7 @@ PfPvWindow::PfPvWindow(MainWindow *mainWindow) :
     connect(rFrameInterval, SIGNAL(stateChanged(int)),
                 this, SLOT(setrFrameIntervalsPfPvFromCheckBox()));
     //connect(mainWindow, SIGNAL(rideSelected()), this, SLOT(rideSelected()));
+    connect(doubleClickPicker, SIGNAL(doubleClicked(int, int)), this, SLOT(doubleClicked(int, int)));
     connect(this, SIGNAL(rideItemChanged(RideItem*)), this, SLOT(rideSelected()));
     connect(mainWindow, SIGNAL(intervalSelected()), this, SLOT(intervalSelected()));
     connect(mainWindow, SIGNAL(intervalsChanged()), this, SLOT(intervalSelected()));
@@ -190,8 +204,16 @@ PfPvWindow::rideSelected()
 
 
     RideItem *ride = myRideItem;
-    if (ride == current || !ride || !ride->ride())
+    if (!ride || !ride->ride() || !ride->ride()->isDataPresent(RideFile::watts) || !ride->ride()->isDataPresent(RideFile::cad)) {
+        setIsBlank(true);
+        current = NULL;
         return;
+    }
+    else {
+        setIsBlank(false);
+    }
+
+    if (ride == current) return;
 
     pfPvPlot->setData(ride);
 
@@ -297,4 +319,13 @@ PfPvWindow::setQaCLFromLineEdit()
     pfPvPlot->replot();
 }
 
+void
+PfPvWindow::doubleClicked(int cad, int watts)
+{
+    pfPvPlot->setCP(watts);
+    qaCPValue->setText(QString("%1").arg(watts));
+    pfPvPlot->setCAD(cad);
+    qaCadValue->setText(QString("%1").arg(cad));
+    pfPvPlot->replot();
+}
 

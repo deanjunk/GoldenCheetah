@@ -40,9 +40,9 @@ ScatterWindow::addStandardChannels(QComboBox *box)
     box->addItem(tr("CPV"), MODEL_CPV);
     box->addItem(tr("Time"), MODEL_TIME);
     box->addItem(tr("Distance"), MODEL_DISTANCE);
-    //box->addItem(tr("Interval"), MODEL_INTERVAL); //XXX supported differently for now
-    //box->addItem(tr("Latitude"), MODEL_LAT); //XXX weird values make the plot ugly
-    //box->addItem(tr("Longitude"), MODEL_LONG); //XXX weird values make the plot ugly
+    //box->addItem(tr("Interval"), MODEL_INTERVAL); //supported differently for now
+    //box->addItem(tr("Latitude"), MODEL_LAT); //weird values make the plot ugly
+    //box->addItem(tr("Longitude"), MODEL_LONG); //weird values make the plot ugly
 }
 
 void
@@ -63,44 +63,21 @@ ScatterWindow::addrStandardChannels(QxtStringSpinBox *box)
 }
 
 ScatterWindow::ScatterWindow(MainWindow *parent, const QDir &home) :
-    GcWindow(parent), home(home), main(parent), ride(NULL), current(NULL)
+    GcChartWindow(parent), home(home), main(parent), ride(NULL), current(NULL)
 {
     setInstanceName("2D Window");
-
-    // Main layout
-    QGridLayout *mainLayout = new QGridLayout(this);
-    mainLayout->setContentsMargins(2,2,2,2);
 
     //
     // reveal controls widget
     //
 
-    // reveal widget
-    revealControls = new QWidget(this);
-    revealControls->setFixedHeight(50);
-    revealControls->setStyleSheet("background-color: rgba(100%, 100%, 100%, 100%)");
-    revealControls->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
-
-    revealAnim = new QPropertyAnimation(revealControls, "pos");
-    revealAnim->setDuration(500);
-    revealAnim->setEasingCurve(QEasingCurve(QEasingCurve::InSine));
-    revealAnim->setKeyValueAt(0,QPoint(2,-50));
-    revealAnim->setKeyValueAt(0.5,QPoint(2,15));
-    revealAnim->setKeyValueAt(1,QPoint(2,20));
-
-    unrevealAnim = new QPropertyAnimation(revealControls, "pos");
-    unrevealAnim->setDuration(500);
-    unrevealAnim->setKeyValueAt(0,QPoint(2,20));
-    unrevealAnim->setKeyValueAt(0.5,QPoint(2,15));
-    unrevealAnim->setKeyValueAt(1,QPoint(2,-50));
-
     // reveal controls
     QLabel *rxLabel = new QLabel(tr("X-Axis:"), this);
-    rxSelector = new QxtStringSpinBox(revealControls);
+    rxSelector = new QxtStringSpinBox();
     addrStandardChannels(rxSelector);
 
     QLabel *ryLabel = new QLabel(tr("Y-Axis:"), this);
-    rySelector = new QxtStringSpinBox(revealControls);
+    rySelector = new QxtStringSpinBox();
     addrStandardChannels(rySelector);
 
     rIgnore = new QCheckBox(tr("Ignore Zero"));
@@ -121,10 +98,7 @@ ScatterWindow::ScatterWindow(MainWindow *parent, const QDir &home) :
     r->addWidget(rIgnore);
     r->addWidget(rFrameInterval);
     r->addStretch();
-    revealControls->setLayout(r);
-
-    // hide them initially
-    revealControls->hide();
+    setRevealLayout(r);
 
     QWidget *c = new QWidget;
     QFormLayout *cl = new QFormLayout(c);
@@ -135,10 +109,7 @@ ScatterWindow::ScatterWindow(MainWindow *parent, const QDir &home) :
     QVBoxLayout *vlayout = new QVBoxLayout;
     vlayout->addWidget(scatterPlot);
 
-    mainLayout->addLayout(vlayout,0,0);
-    mainLayout->addWidget(revealControls,0,0, Qt::AlignTop);
-    revealControls->raise();
-    setLayout(mainLayout);
+    setChartLayout(vlayout);
 
     // labels
     xLabel = new QLabel(tr("X-Axis:"), this);
@@ -206,7 +177,14 @@ ScatterWindow::rideSelected()
 
     ride = myRideItem;
 
-    if (!ride || !ride->ride() || ride == current) return;
+    if (ride == current) return;
+
+    if (!ride || !ride->ride() || !ride->ride()->dataPoints().count()) {
+        current = NULL;
+        setIsBlank(true);
+        return;
+    } else
+        setIsBlank(false);
 
     current = ride;
 
@@ -300,6 +278,19 @@ ScatterWindow::setData()
     settings.ignore = ignore->isChecked();
     settings.gridlines = grid->isChecked();
     settings.frame = frame->isChecked();
+
+    /* Not a blank state ? Just no data and we can change series ?
+    if ((setting.x == MODEL_POWER || setting.y == MODEL_POWER ) && !ride->ride()->isDataPresent(RideFile::watts))
+        setIsBlank(true);
+    else if ((setting.x == MODEL_CADENCE || setting.y == MODEL_CADENCE ) && !ride->ride()->isDataPresent(RideFile::cad))
+        setIsBlank(true);
+    else if ((setting.x == MODEL_HEARTRATE || setting.y == MODEL_HEARTRATE ) && !ride->ride()->isDataPresent(RideFile::hr))
+        setIsBlank(true);
+    else if ((setting.x == MODEL_SPEED || setting.y == MODEL_SPEED ) && !ride->ride()->isDataPresent(RideFile::kph))
+        setIsBlank(true);
+    else
+        setIsBlank(false);
+    */
 
     // any intervals to plot?
     settings.intervals.clear();

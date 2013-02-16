@@ -39,6 +39,14 @@ static DeviceType SupportedDevices[] =
         "speed or cadence meters via a Garmin ANT+ USB1 or USB2 stick" ,
         ":images/devices/garminusb.png" },
 #endif
+#ifdef GC_HAVE_WFAPI
+      { DEV_BT40,    DEV_BTLE,     (char *) "Bluetooth 4.0", true,   false,
+        "Bluetooth Low Energy devices such as KK Inride, Stages PM, Blue HR and Blue SC",
+        ":images/devices/btle.png" },
+      { DEV_KICKR,    DEV_BTLE,     (char *) "Wahoo Kickr", true,   false,
+        "The Wahoo Fitness Kickr cyling trainer via its Bluetooth smart interface. ",
+        ":images/devices/kickr.png" },
+#endif
       { DEV_CT,       DEV_SERIAL,  (char *) "Racermate Computrainer",true,    false,
         "Racermate Computrainer Lab or Pro bike trainer with the handlebar controller "
         "connected via a USB adaptor or directly connected to a local serial port." ,
@@ -49,34 +57,11 @@ static DeviceType SupportedDevices[] =
         "to a USB port. Please make sure you have device firmware to hand." ,
         ":images/devices/fortius.png" },
 #endif
-#ifdef GC_HAVE_WFAPI
-      { DEV_KICKR,    DEV_BTLE,     (char *) "Wahoo Kickr", true,   false,
-        "The Wahoo Fitness Kickr cyling trainer via its Bluetooth smart interface. ",
-        ":images/devices/kickr.png" },
-#endif
 #ifdef GC_WANT_ROBOT
       { DEV_NULL,     DEV_TCP,     (char *) "Robot", false,   false,
         "Testing device used for development only. If an ERG file is selected it will "
         "replay back, with a little randomness thrown in.",
         "" },
-#endif
-
-      // The Quarqd device has been deprecated since we now have native ANT+ support
-      // We have kept the code in the codebase in case it emerges later that there is
-      // a compelling reason to keep it. It might be useful for testing for example.
-      //
-      // The GC server, has actually been written (see simpleserver.py) but the code for
-      // racing has not been coded up. It may be as simple as adding 'dots' on the
-      // workout plot, but lets see that in 3.1
-      //
-
-#if 0
-      { DEV_GSERVER,  DEV_TCP,     (char *) "Golden Cheetah Server", false,   false,
-        "Golden Cheetah racing server, not curently supported."                     },
-      { DEV_ANTPLUS,  DEV_QUARQ,   (char *) "ANT+ via Quarqd",       true,    false,
-        "ANT+ devices such as SRM, Powertap or Quarq power meters, Heart rate belts, "
-        "speed or cadence meters via an existing Quarqd server" ,
-        ":images/devices/quarqd.png" },
 #endif
       { 0, 0, NULL, 0, 0, "", "" }
 };

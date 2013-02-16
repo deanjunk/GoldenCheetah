@@ -188,7 +188,7 @@ signals:
 
 
 public:
-    WorkoutEditorBase(QStringList &colms, QWidget *parent);
+    WorkoutEditorBase(QStringList &colms, QWidget *parent=0);
     virtual void insertDataRow(int row) =0;
     virtual void rawData(QVector<QStringList> &rawData)
     {
@@ -317,7 +317,7 @@ class WorkoutTypePage : public QWizardPage
     QButtonGroup *buttonGroupBox;
     QRadioButton *absWattageRadioButton, *relWattageRadioButton, *gradientRadioButton, *importRadioButton;
 public:
-    WorkoutTypePage(QWidget *parent);
+    WorkoutTypePage(QWidget *parent=0);
     bool isComplete() const { return true; }
     void initializePage();
     int nextId() const;
@@ -332,7 +332,7 @@ class AbsWattagePage : public WorkoutPage
 private slots:
     void updateMetrics();
 public:
-    AbsWattagePage(QWidget *parent);
+    AbsWattagePage(QWidget *parent=0);
     void initializePage();
     void SaveWorkout();
     bool isFinalPage() const { return true; }
@@ -349,8 +349,8 @@ class RelWattagePage : public WorkoutPage
 private slots:
     void updateMetrics();
 public:
-     RelWattagePage(QWidget *parent);
-     void initializePage();
+    RelWattagePage(QWidget *parent=0);
+    void initializePage();
     bool isFinalPage() const { return true; }
     int nextId()  const { return -1; }
 
@@ -371,7 +371,7 @@ private slots:
 
     void updateMetrics();
 public:
-    GradientPage(QWidget *parent);
+    GradientPage(QWidget *parent=0);
     void initializePage();
     void SaveWorkout();
     bool isFinalPage() const { return true; }
@@ -391,7 +391,7 @@ class ImportPage : public WorkoutPage
 public slots:
      void updatePlot();
 public:
-    ImportPage(QWidget * parent);
+    ImportPage(QWidget * parent=0);
      void initializePage();
     void SaveWorkout();
     bool isFinalPage() const { return true; }
@@ -406,7 +406,7 @@ public:
     enum { WW_WorkoutTypePage, WW_AbsWattagePage, WW_RelWattagePage, WW_GradientPage, WW_ImportPage };
 
     WorkoutWizard(QWidget *parent = NULL);
-    int nextId();
+
     // called at the end of the wizard...
     void accept();
 };

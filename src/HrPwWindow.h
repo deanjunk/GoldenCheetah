@@ -34,18 +34,21 @@ class QSlider;
 #include "LTMWindow.h" // for tooltip/canvaspicker
 
 
-class HrPwWindow : public GcWindow
+class HrPwWindow : public GcChartWindow
 {
     Q_OBJECT
     G_OBJECT
 
     Q_PROPERTY(int shadeZones READ isShadeZones WRITE setShadeZones USER true)
     Q_PROPERTY(int joinLine READ isJoinLine WRITE setJoinLine USER true)
+    Q_PROPERTY(int fullplot READ showFullplot WRITE setFullplot USER true)
 
     int isJoinLine() const { return joinlineCheckBox->checkState(); }
     void setJoinLine(int x) { joinlineCheckBox->setCheckState(x ? Qt::Checked : Qt::Unchecked); }
     int isShadeZones() const { return shadeZones->checkState(); }
     void setShadeZones(int x) { shadeZones->setCheckState(x ? Qt::Checked : Qt::Unchecked); }
+    int showFullplot() const { return fullplot->checkState(); }
+    void setFullplot(int x) { fullplot->setCheckState(x ? Qt::Checked : Qt::Unchecked); }
 
     public:
 
@@ -61,8 +64,6 @@ class HrPwWindow : public GcWindow
 
         // reveal
         bool hasReveal() { return true; }
-        void reveal() { revealControls->show(); revealAnim->start(); }
-        void unreveal() { unrevealAnim->start(); revealControls->hide(); }
 
         int smooth;
 
@@ -81,6 +82,7 @@ class HrPwWindow : public GcWindow
         void setrSmoothingFromSlider();
         void setShadeZones();
         void setSmooth(int);
+        void showHidePlot();
         void setDelay(int);
 
     protected:
@@ -92,6 +94,7 @@ class HrPwWindow : public GcWindow
 
         QCheckBox *joinlineCheckBox;
         QCheckBox *shadeZones;
+        QCheckBox *fullplot;
 
         QSlider *delaySlider;
         QLineEdit *delayEdit;
@@ -101,8 +104,6 @@ class HrPwWindow : public GcWindow
 
     private:
         // reveal controls
-        QWidget *revealControls;
-        QPropertyAnimation *revealAnim, *unrevealAnim;
         QLabel *rSmooth;
         QSlider *rSmoothSlider;
         QLineEdit *rSmoothEdit;

@@ -38,7 +38,7 @@ void GcWindow::setControls(QWidget *x)
 
     if (x != NULL) {
         menu->clear();
-        menu->addAction(tr("Chart Settings"), this, SIGNAL(showControls()));
+        menu->addAction(tr("All Chart Settings"), this, SIGNAL(showControls()));
         menu->addAction(tr("Close"), this, SLOT(_closeWindow()));
     }
 }
@@ -180,6 +180,7 @@ GcWindow::GcWindow()
 
     menuButton->hide();
 
+
 #ifndef Q_OS_MAC // spacing ..
     menuButton->move(0,0);
 #endif
@@ -223,7 +224,6 @@ GcWindow::GcWindow(QWidget *parent) : QFrame(parent), dragState(None) {
 
 GcWindow::~GcWindow()
 {
-    //qDebug()<<"deleting.."<<property("title").toString()<<property("instanceName").toString()<<_type;
 }
 
 bool
@@ -231,7 +231,7 @@ GcWindow::amVisible()
 {
     // if we're hidden then say false!
     if (isHidden()) return false;
-    return true; // XXX need to sort this!!
+    return true;
 }
 
 
@@ -240,12 +240,7 @@ void
 GcWindow::paintEvent(QPaintEvent * /*event*/)
 {
     static QPixmap closeImage = QPixmap(":images/toolbar/popbutton.png");
-    static QPixmap aluBar = QPixmap(":images/aluBar.png");
-    static QPixmap aluBarDark = QPixmap(":images/aluBarDark.png");
-    static QPixmap aluLight = QPixmap(":images/aluLight.jpg");
-    static QPixmap carbon = QPixmap(":images/carbon.jpg");
     static QPalette defaultPalette;
-
 
     // setup a painter and the area to paint
     QPainter painter(this);
@@ -257,19 +252,8 @@ GcWindow::paintEvent(QPaintEvent * /*event*/)
 
         // fill in the title bar
         QRect bar(0,0,width(),contentsMargins().top());
-        //if (contentsMargins().top() < 25) {
-        //QColor bg;
-        //if (property("active").toBool() == true) {
-            //bg = GColor(CTILEBARSELECT);
-            //painter.drawPixmap(bar, aluBar);
-        //} else {
-            //bg = GColor(CTILEBAR);
-            //painter.drawPixmap(bar, aluBarDark);
-        //}
-        //} else {
-            painter.setPen(Qt::darkGray);
-            painter.drawRect(QRect(0,0,width()-1,height()-1));
-        //}
+        painter.setPen(Qt::darkGray);
+        painter.drawRect(QRect(0,0,width()-1,height()-1));
 
         // heading
         QFont font;
@@ -279,13 +263,6 @@ GcWindow::paintEvent(QPaintEvent * /*event*/)
         QString subtitle = property("subtitle").toString();
         QString title = property("title").toString();
         QString heading = subtitle != "" ? subtitle : title;
-
-        // embossed...
-        //QRect shad = bar;
-        //shad.setY(bar.y()+2);
-        //shad.setX(bar.x()+2);
-        //painter.setPen(QColor(255,255,255,180));
-        //painter.drawText(shad, heading, Qt::AlignVCenter | Qt::AlignCenter);
 
         // pen color needs to contrast to background color
         QColor bgColor = property("color").value<QColor>();
@@ -312,21 +289,16 @@ GcWindow::paintEvent(QPaintEvent * /*event*/)
 
             QPixmap sized = closeImage.scaled(QSize(contentsMargins().top()-6,
                                                     contentsMargins().top()-6));
-            //painter.drawPixmap(width()-3-sized.width(), 3, sized.width(), sized.height(), sized);
 
         } else {
             painter.setPen(Qt::darkGray);
-            //painter.drawRect(QRect(0,0,width()-1,height()-1)); //XXX pointless
         }
     } else {
         // is this a layout manager?
         // background light gray for now?
         QRect all(0,0,width(),height());
         if (property("isManager").toBool() == true) {
-            //painter.drawTiledPixmap(all, carbon);
             painter.fillRect(all, QColor("#B3B4BA"));
-        } else {
-            //painter.drawTiledPixmap(all, aluLight);
         }
     }
 }
@@ -371,12 +343,9 @@ GcWindow::mousePressEvent(QMouseEvent *e)
     // is it on the close icon?
     if (h == Close) {
         setDragState(None);
-        //hide();
-        //emit exit();
         return;
     } else if (h == Flip) {
         setDragState(None);
-        //flip();
     }
 
     // get current window state
@@ -425,7 +394,7 @@ GcWindow::spotHotSpot(QMouseEvent *e)
     int corner = 9;
     int borderWidth = 3;
 
-    // account for offset XXX map to GcWindow geom
+    // account for offset by mapping to GcWindow geom
     int _y = e->y();
     int _x = e->x();
     int _height = height();
@@ -463,7 +432,6 @@ GcWindow::mouseMoveEvent(QMouseEvent *e)
 
     default:
     case Move :
-        //move(oX + relx, oY + rely);
 #if QT_VERSION < 0x040700
         setCursor(Qt::ClosedHandCursor);
 #else
@@ -580,8 +548,6 @@ GcWindow::mouseMoveEvent(QMouseEvent *e)
 
     oX = pos().x();
     oY = pos().y();
-    //repaint();
-    //QApplication::processEvents(); // flicker...
 }
 
 void
@@ -644,7 +610,6 @@ GcWindow::setCursorShape(DragState d)
         setCursor(Qt::SizeBDiagCursor);
         break;
     case Move:
-        //setCursor(Qt::OpenHandCursor); //XXX sub widgets don't set the cursor...
         setCursor(Qt::ArrowCursor);
         break;
     default:
@@ -676,4 +641,131 @@ void
 GcWindow::_closeWindow()
 {
     emit closeWindow(this);
+}
+
+GcChartWindow::GcChartWindow(QWidget *parent) : GcWindow(parent) {
+    //
+    // Default layout
+    //
+    setContentsMargins(0,0,0,0);
+
+    _layout = new QStackedLayout();
+    setLayout(_layout);
+
+    _mainWidget = new QWidget(this);
+    _mainWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    _blank = new QWidget(this);
+    _blank->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
+    _layout->addWidget(_blank);
+    _layout->addWidget(_mainWidget);
+    _layout->setCurrentWidget(_mainWidget);
+
+    // Main layout
+    _mainLayout = new QGridLayout();
+    _mainLayout->setContentsMargins(2,2,2,2);
+
+    // reveal widget
+    _revealControls = new QWidget();
+    _revealControls->setFixedHeight(50);
+    _revealControls->setStyleSheet("background-color: rgba(100%, 100%, 100%, 100%)");
+    _revealControls->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
+
+    _revealAnim = new QPropertyAnimation(_revealControls, "pos");
+    _revealAnim->setDuration(200);
+    _revealAnim->setEasingCurve(QEasingCurve(QEasingCurve::InSine));
+    _revealAnim->setKeyValueAt(0,QPoint(2,-50));
+    _revealAnim->setKeyValueAt(0.5,QPoint(2,-5));
+    _revealAnim->setKeyValueAt(1,QPoint(2,0));
+
+    _unrevealAnim = new QPropertyAnimation(_revealControls, "pos");
+    _unrevealAnim->setDuration(150);
+    _unrevealAnim->setEasingCurve(QEasingCurve(QEasingCurve::InSine));
+    _unrevealAnim->setKeyValueAt(0,QPoint(2,0));
+    _unrevealAnim->setKeyValueAt(0.5,QPoint(2,-5));
+    _unrevealAnim->setKeyValueAt(1,QPoint(2,-50));
+
+    _unrevealTimer = new QTimer();
+    connect(_unrevealTimer, SIGNAL(timeout()), this, SLOT(hideRevealControls()));
+
+    _revealControls->hide();
+
+    _mainLayout->addWidget(_revealControls,0,0, Qt::AlignTop);
+    _mainWidget->setLayout(_mainLayout);
+
+    //
+    // Default Blank layout
+    //
+    _defaultBlankLayout = new QVBoxLayout();
+    _defaultBlankLayout->setAlignment(Qt::AlignCenter);
+    _defaultBlankLayout->setContentsMargins(10,10,10,10);
+
+    QToolButton *blankImg = new QToolButton(this);
+    blankImg->setFocusPolicy(Qt::NoFocus);
+    blankImg->setToolButtonStyle(Qt::ToolButtonIconOnly);
+    blankImg->setStyleSheet("QToolButton {text-align: left;color : blue;background: transparent}");
+    blankImg->setSizePolicy(QSizePolicy::MinimumExpanding,QSizePolicy::MinimumExpanding);
+
+    blankImg->setIcon(QPixmap(":/images/gc-blank.png"));
+    blankImg->setIconSize(QSize(200,200)); //512
+
+    QLabel *blankLabel = new QLabel(tr("No data available"));
+    blankLabel->setAlignment(Qt::AlignCenter);
+    QFont font;
+    font.setPointSize(font.pointSize() + 4);
+    font.setWeight(QFont::Bold);
+    blankLabel->setFont(font);
+
+    _defaultBlankLayout->addStretch();
+    _defaultBlankLayout->addWidget(blankImg);
+    _defaultBlankLayout->addWidget(blankLabel);
+    _defaultBlankLayout->addStretch();
+    _blank->setLayout(_defaultBlankLayout);
+}
+
+void
+GcChartWindow:: setChartLayout(QLayout *layout)
+{
+    _chartLayout = layout;
+    _mainLayout->addLayout(_chartLayout,0,0, Qt::AlignTop);
+}
+
+void
+GcChartWindow:: setRevealLayout(QLayout *layout)
+{
+    _revealLayout = layout;
+    _revealControls->setLayout(_revealLayout);
+}
+
+void
+GcChartWindow:: setBlankLayout(QLayout *layout)
+{
+    _blankLayout = layout;
+    _blank->setLayout(layout);
+}
+
+void
+GcChartWindow:: setIsBlank(bool value)
+{
+    _layout->setCurrentWidget(value?_blank:_mainWidget);
+}
+
+void
+GcChartWindow:: reveal()
+{
+    _unrevealTimer->stop();
+    _revealControls->raise();
+    _revealControls->show();
+    _revealAnim->start();
+}
+
+void GcChartWindow:: unreveal()
+{
+    _unrevealAnim->start();
+    _unrevealTimer->start(150);
+}
+
+void GcChartWindow:: hideRevealControls()
+{
+    _revealControls->hide();
 }

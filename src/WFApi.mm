@@ -43,6 +43,13 @@ static QString toQString(const NSString *nsstr)
     return result;
 }
 
+static inline NSString* fromQString(const QString &string)
+{
+    const QByteArray utf8 = string.toUtf8();
+    const char* cString = utf8.constData();
+    return [[NSString alloc] initWithUTF8String:cString];
+}
+
 // Thi source file contains the private objc interface (WFBridge) that
 // sits atop the Wahoo Fitness APIs at the top of the source file.
 //
@@ -50,37 +57,28 @@ static QString toQString(const NSString *nsstr)
 // sits atop that private interface (WFBridge)
 
 //----------------------------------------------------------------------
-// Objective C -- Private interface / Bridge to WF API classes
+// Objective C -- Private interface
 //----------------------------------------------------------------------
-
 
 @interface WFBridge : NSObject <WFHardwareConnectorDelegate, WFSensorConnectionDelegate> {
 @public
     QPointer<WFApi> qtw; // the QT QObject public class
     NSMutableArray *discoveredSensors;
-    WFBikePowerConnection *sensorConnection; // a connection XXX only 1 at a time for now
 }
-
-@property (retain, nonatomic) WFBikePowerConnection *sensorConnection;
 
 @end
 
 @implementation WFBridge
 
-@synthesize sensorConnection;
+//============================================================================
+// Hardware Connector Methods
+//============================================================================
 
-//**********************************************************************
-// METHODS
-//**********************************************************************
-
-
-//version
+// retreive the API version
 -(NSString *) apiVersion { return [[WFHardwareConnector sharedConnector] apiVersion]; }
 
-// State of BTLE support and hardware
+// BTLE state and enablement
 -(BOOL)hasBTLESupport { return [[WFHardwareConnector sharedConnector] hasBTLESupport]; }
-
-// By default BTLE is disabled
 -(BOOL)isBTLEEnabled { return [[WFHardwareConnector sharedConnector] isBTLEEnabled]; }
 -(BOOL)enableBTLE:(BOOL)bEnable inBondingMode:(BOOL)bBondingMode {
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc]init];
@@ -88,8 +86,10 @@ static QString toQString(const NSString *nsstr)
     [pool drain];
     return result;
 }
+-(BOOL)isCommunicationHWReady { return [[WFHardwareConnector sharedConnector] isCommunicationHWReady]; }
+-(int)currentState { return [[WFHardwareConnector sharedConnector] currentState]; }
 
-// initialise by getting the WF API singleton
+// Initialise the WFBridge singleton
 -(id)init
 {
     // initialise
@@ -98,26 +98,41 @@ static QString toQString(const NSString *nsstr)
     [self enableBTLE:TRUE inBondingMode:false];
     return self;
 }
-// ready to scan
--(BOOL)isCommunicationHWReady { return [[WFHardwareConnector sharedConnector] isCommunicationHWReady]; }
 
-// current State
--(int)currentState { return [[WFHardwareConnector sharedConnector] currentState]; }
-// scan
+// scan for devices and stored details
 -(BOOL)discoverDevicesOfType:(WFSensorType_t)eSensorType onNetwork:(WFNetworkType_t)eNetworkType searchTimeout:(NSTimeInterval)timeout
 {
+    // get rid of past scans / stop any in progress
     [discoveredSensors removeAllObjects];
+    [[WFHardwareConnector sharedConnector] cancelDiscoveryOnNetwork:WF_NETWORKTYPE_BTLE];
+
+    // go looking
     [[WFHardwareConnector sharedConnector] discoverDevicesOfType:eSensorType onNetwork:eNetworkType searchTimeout:timeout]; //XXX ignoringreturn
     return true;
 }
 -(int)deviceCount { return [discoveredSensors count]; }
 -(NSString*)deviceUUID:(int)n
 {
-    WFDeviceParams* connParams = (WFDeviceParams*)[discoveredSensors objectAtIndex:n];
-    return connParams.deviceUUIDString;
+    WFConnectionParams* connParams = (WFConnectionParams*)[discoveredSensors objectAtIndex:n];
+    return connParams.device1.deviceUUIDString;
+}
+-(int)deviceType:(int)n
+{
+    WFConnectionParams* connParams = (WFConnectionParams*)[discoveredSensors objectAtIndex:n];
+    return (int)connParams.sensorType;
+}
+-(int)deviceSubType:(int)n
+{
+    WFConnectionParams* connParams = (WFConnectionParams*)[discoveredSensors objectAtIndex:n];
+    return (int)connParams.sensorSubType;
 }
 
--(BOOL)connectDevice: (int)n
+//============================================================================
+// Sensor Connection Methods
+//============================================================================
+
+// connect and disconnect a device
+-(WFSensorConnection *)connectDevice: (NSString *)uuid
 {
     // it takes far too long!
     [[WFHardwareConnector sharedConnector] disableFirmwareCheck];
@@ -125,95 +140,57 @@ static QString toQString(const NSString *nsstr)
     // just in case there is a discovery in action, lets cancel it...
     [[WFHardwareConnector sharedConnector] cancelDiscoveryOnNetwork:WF_NETWORKTYPE_BTLE];
 
-    WFDeviceParams* dev = (WFDeviceParams*)[discoveredSensors objectAtIndex:n];
+    WFDeviceParams* dev = [[WFDeviceParams alloc] init];
+    dev.deviceUUIDString = uuid;
+    dev.networkType = WF_NETWORKTYPE_BTLE;
+
     WFConnectionParams* params = [[WFConnectionParams alloc] init];
     params.sensorType = WF_SENSORTYPE_BIKE_POWER;
     params.networkType = WF_NETWORKTYPE_BTLE;
     params.sensorSubType = WF_SENSOR_SUBTYPE_BIKE_POWER_KICKR;
-    params.searchTimeout = 15;
+    params.searchTimeout = 5;
     params.device1 = dev;
 
     // request the sensor connection.
-    self.sensorConnection = (WFBikePowerConnection*)[[WFHardwareConnector sharedConnector] requestSensorConnection:params];
+    WFSensorConnection *sensorConnection = (WFBikePowerConnection*)[[WFHardwareConnector sharedConnector] requestSensorConnection:params];
 
     // set delegate to receive connection status changes.
-    self.sensorConnection.delegate = self;
+    sensorConnection.delegate = self;
 
 
-    return true;
+    return sensorConnection;
 }
+-(int)connectionStatus:(WFSensorConnection*)sensorConnection { return (int)[sensorConnection connectionStatus]; }
+- (BOOL)disconnectDevice:(WFSensorConnection*)sensorConnection { [sensorConnection disconnect]; return true; }
+- (BOOL)isConnected:(WFSensorConnection*)sensorConnection { return [sensorConnection isConnected]; }
 
-- (BOOL)disconnectDevice { [sensorConnection disconnect]; return true; }
+// get telemetry
+- (WFBikePowerData*) getData:(WFSensorConnection*)sensorConnection { return (WFBikePowerData*)[sensorConnection getData]; }
+
+// trainer setup / load
+- (void) setSlopeMode:(WFBikePowerConnection*)sensorConnection { [sensorConnection trainerSetSimMode:85 rollingResistance:0.0004 windResistance:0.6]; }
+- (void) setErgoMode:(WFBikePowerConnection*)sensorConnection { [sensorConnection trainerSetErgMode:100]; }
+- (void) setSlope:(WFBikePowerConnection*)sensorConnection slope:(double)slope { [sensorConnection trainerSetGrade:slope]; }
+- (void) setLoad:(WFBikePowerConnection*)sensorConnection load:(int)load { [sensorConnection trainerSetErgMode:load]; }
+
+//============================================================================
+// Sensor connection updates (delegate methods)
+//============================================================================
+
+// state changed
 - (void)connection:(WFSensorConnection*)connectionInfo stateChanged:(WFSensorConnectionStatus_t)connState
 {   Q_UNUSED(connectionInfo);
     qtw->connectionState(connState);
 }
-
+// timed out
 - (void)connectionDidTimeout:(WFSensorConnection*)connectionInfo
 {   Q_UNUSED(connectionInfo);
     qtw->connectionTimeout();
 }
+// telemetry available
+- (BOOL) hasData:(WFSensorConnection*)sensorConnection { return [sensorConnection hasData]; }
 
-- (BOOL) hasData { return [sensorConnection hasData]; }
-- (WFBikePowerData*) getData { return (WFBikePowerData*)[sensorConnection getData]; }
-
-- (void) setSlopeMode 
-{
-    [sensorConnection trainerSetSimMode:85 rollingResistance:0.0004 windResistance:0.6];
-}
-
-- (void) setErgoMode
-{
-    [sensorConnection trainerSetErgMode:100];
-}
-
-- (void) setSlope:(double)slope
-{
-    [sensorConnection trainerSetGrade:slope];
-}
-
-- (void) setLoad:(int)load
-{
-    [sensorConnection trainerSetErgMode:load];
-}
-
-
-//**********************************************************************
-// EVENTS / SIGNALS
-//**********************************************************************
-
-// WFHardwareConnectorDelegate Functions
--(void)hardwareConnector:(WFHardwareConnector*)hwConnector connectedSensor:(WFSensorConnection*)connectionInfo
-{   Q_UNUSED(hwConnector);
-    qtw->connectedSensor(connectionInfo);
-}
-
--(void)hardwareConnector:(WFHardwareConnector*)hwConnector didDiscoverDevices:(NSSet*)connectionParams searchCompleted:(BOOL)bCompleted
-{   Q_UNUSED(hwConnector);
-    // add discovered devices.
-    for (WFConnectionParams* connParams in connectionParams) {
-        [discoveredSensors addObject:connParams.device1];
-    }   
-
-    qtw->didDiscoverDevices([connectionParams count], bCompleted); //XXX convert array
-}
-
--(void)hardwareConnector:(WFHardwareConnector*)hwConnector disconnectedSensor:(WFSensorConnection*)connectionInfo
-{   Q_UNUSED(hwConnector);
-    qtw->disconnectedSensor(connectionInfo);
-}
-
--(void)hardwareConnector:(WFHardwareConnector*)hwConnector stateChanged:(WFHardwareConnectorState_t)currentState
-{   Q_UNUSED(hwConnector);
-    Q_UNUSED(currentState);
-    qtw->stateChanged();
-}
-
--(void)hardwareConnectorHasData
-{
-    qtw->connectorHasData();
-}
-
+// firmware available for this sensor
 -(void) hardwareConnector:(WFHardwareConnector*)hwConnector hasFirmwareUpdateAvailableForConnection:(WFSensorConnection*)connectionInfo required:(BOOL)required withWahooUtilityAppURL:(NSURL *)wahooUtilityAppURL
 {   Q_UNUSED(hwConnector);
     Q_UNUSED(connectionInfo);
@@ -222,33 +199,66 @@ static QString toQString(const NSString *nsstr)
     qtw->hasFirmwareUpdateAvalableForConnection(); //XXX do what?
 }
 
+//============================================================================
+// Hardware connector updates (delegate methods)
+//============================================================================
+
+// state changed on connector
+-(void)hardwareConnector:(WFHardwareConnector*)hwConnector stateChanged:(WFHardwareConnectorState_t)currentState
+{   Q_UNUSED(hwConnector);
+    Q_UNUSED(currentState);
+    qtw->stateChanged();
+}
+
+// connection established
+-(void)hardwareConnector:(WFHardwareConnector*)hwConnector connectedSensor:(WFSensorConnection*)connectionInfo
+{   Q_UNUSED(hwConnector);
+    qtw->connectedSensor(connectionInfo);
+}
+
+// data has arrived on connector
+-(void)hardwareConnectorHasData { qtw->connectorHasData(); }
+
+// a sensor was disconnected
+-(void)hardwareConnector:(WFHardwareConnector*)hwConnector disconnectedSensor:(WFSensorConnection*)connectionInfo
+{   Q_UNUSED(hwConnector);
+    qtw->disconnectedSensor(connectionInfo);
+}
+
+// devices discovered
+-(void)hardwareConnector:(WFHardwareConnector*)hwConnector didDiscoverDevices:(NSSet*)connectionParams searchCompleted:(BOOL)bCompleted
+{   Q_UNUSED(hwConnector);
+
+    if (!bCompleted) {
+        // add discovered devices -- as they are discovered, not at the end.
+        for (WFConnectionParams* connParams in connectionParams) {
+            [discoveredSensors addObject:connParams];
+        }   
+    }
+
+    qtw->didDiscoverDevices([discoveredSensors count], bCompleted);
+}
+
 -(NSAutoreleasePool*) getPool { return [[NSAutoreleasePool alloc] init]; }
 -(void) freePool:(NSAutoreleasePool*)pool { [pool release]; }
 @end
 
 //----------------------------------------------------------------------
-// C++ Public interface
+// C++ PUBLIC Interface
 //----------------------------------------------------------------------
 
+// Singleton API class
 WFApi *_gc_wfapi = NULL;
-
-// Construct the bridge to the WF API
 WFApi::WFApi()
 {
     wf = [[WFBridge alloc] init];
     wf->qtw = this;
 }
+WFApi::~WFApi() { [wf release]; }
 
-// Destroy the bridge to the WF API
-WFApi::~WFApi()
-{
-    [wf release];
-}
-
-//**********************************************************************
-// METHODS
-//**********************************************************************
-
+//============================================================================
+// wrappers for methods in private implementation above
+//============================================================================
 QString WFApi::apiVersion() { return toQString([wf apiVersion]); }
 bool WFApi::isBTLEEnabled() { return [wf isBTLEEnabled]; }
 bool WFApi::hasBTLESupport() { return [wf hasBTLESupport]; }
@@ -259,13 +269,10 @@ bool WFApi::enableBTLE(bool enable, bool bondingmode) {
 int WFApi::currentState() { return [wf currentState]; }
 
 bool
-WFApi::discoverDevicesOfType(int eSensorType, int eNetworkType, int timeout)
-{   Q_UNUSED(eSensorType);
-    Q_UNUSED(eNetworkType);
-    Q_UNUSED(timeout);
-
+WFApi::discoverDevicesOfType(int eSensorType)
+{
     // ignore ehat was passed for now...
-    return [wf discoverDevicesOfType:WF_SENSORTYPE_BIKE_POWER onNetwork:WF_NETWORKTYPE_BTLE searchTimeout:5.00];
+    return [wf discoverDevicesOfType:(WFSensorType_t)eSensorType onNetwork:WF_NETWORKTYPE_BTLE searchTimeout:15.00];
 }
 
 QString WFApi::deviceUUID(int n)
@@ -273,121 +280,51 @@ QString WFApi::deviceUUID(int n)
     if (n>=0 && n<deviceCount()) return toQString([wf deviceUUID:n]);
     else return "";
 }
-bool
-WFApi::hasData()
+int WFApi::deviceType(int n)
 {
-    return [wf hasData];
+    if (n>=0 && n<deviceCount()) return (int)[wf deviceType:n];
+    else return -1;
+}
+int WFApi::deviceSubType(int n)
+{
+    if (n>=0 && n<deviceCount()) return (int)[wf deviceSubType:n];
+    else return -1;
 }
 
-bool
-WFApi::connectDevice(int n)
-{
-    // connect with the device n in the discovered array
-    return [wf connectDevice:n];
+int WFApi::connectionStatus(int sd) { return [wf connectionStatus:(WFSensorConnection*)connections.at(sd)]; }
+bool WFApi::isConnected(int sd) { return [wf isConnected:(WFSensorConnection*)connections.at(sd)]; }
+bool WFApi::hasData(int sd) { return [wf hasData:(WFSensorConnection*)connections.at(sd)]; }
+int WFApi::connectDevice(QString uuid) {
+    void *conn = (void*)[wf connectDevice: fromQString(uuid)];
+    connections.append(conn);
+    return (connections.count()-1);
 }
-
-bool
-WFApi::disconnectDevice()
-{
-    return [wf disconnectDevice];
-}
-
-int
-WFApi::deviceCount()
-{
-    return [wf deviceCount];
-}
+bool WFApi::disconnectDevice(int sd) { return [wf disconnectDevice:(WFSensorConnection*)connections.at(sd)]; }
+int WFApi::deviceCount() { return [wf deviceCount]; }
 
 // set slope or ergo mode
-void
-WFApi::setSlopeMode()
-{
-    [wf setSlopeMode];
-}
+void WFApi::setSlopeMode(int sd) { [wf setSlopeMode:(WFBikePowerConnection*)connections.at(sd)]; }
+void WFApi::setErgoMode(int sd) { [wf setErgoMode:(WFBikePowerConnection*)connections.at(sd)]; }
+void WFApi::setSlope(int sd, double n) { [wf setSlope:(WFBikePowerConnection*)connections.at(sd) slope:n]; }
+void WFApi::setLoad(int sd, int n) { [wf setLoad:(WFBikePowerConnection*)connections.at(sd) load:n]; }
 
-void
-WFApi::setErgoMode()
-{
-    [wf setErgoMode];
+//============================================================================
+// methods called by delegate on updates
+//============================================================================
+void WFApi::connectedSensor(void*) { }
+void WFApi::didDiscoverDevices(int count, bool finished) { if (finished) emit discoverFinished();
+                                                           else emit discoveredDevices(count,finished); }
+void WFApi::disconnectedSensor(void*) { }
+void WFApi::hasFirmwareUpdateAvalableForConnection() { }
+void WFApi::stateChanged() { emit currentStateChanged(currentState()); }
+void WFApi::connectionState(int status) { emit connectionStateChanged(status); }
+void WFApi::connectionTimeout() { }
+void WFApi::connectorHasData() { emit connectionHasData(); }
+void WFApi::getRealtimeData(int sd, RealtimeData *rt) {
+    WFBikePowerData *data = [wf getData:(WFSensorConnection*)connections.at(sd)];
+    rt->setWatts((int)[data instantPower]);
+    rt->setCadence((int)[data instantCadence]);
+    rt->setWheelRpm((int)[data instantWheelRPM]);
 }
-
-// set resistance slope or load
-void
-WFApi::setSlope(double n)
-{
-    [wf setSlope:n];
-}
-
-void
-WFApi::setLoad(int n)
-{
-    [wf setLoad:n];
-}
-
-//**********************************************************************
-// SLOTS
-//**********************************************************************
-
-void
-WFApi::connectedSensor(void*)
-{
-}
-
-void
-WFApi::didDiscoverDevices(int count, bool finished)
-{
-    emit discoveredDevices(count,finished);
-}
-
-void
-WFApi::disconnectedSensor(void*)
-{
-}
-
-void
-WFApi::hasFirmwareUpdateAvalableForConnection()
-{
-}
-
-void
-WFApi::stateChanged()
-{
-    emit currentStateChanged(currentState());
-}
-
-void
-WFApi::connectionState(int status)
-{   Q_UNUSED(status);
-}
-
-void
-WFApi::connectionTimeout()
-{
-}
-
-void
-WFApi::connectorHasData()
-{
-    emit connectionHasData();
-}
-
-void
-WFApi::getRealtimeData(RealtimeData *rt)
-{
-    WFBikePowerData *sd = [wf getData];
-    rt->setWatts((int)[sd instantPower]);
-    rt->setCadence((int)[sd instantCadence]);
-    rt->setWheelRpm((int)[sd instantWheelRPM]);
-}
-
-void *
-WFApi::getPool()
-{
-    return (void*)[wf getPool];
-}
-
-void
-WFApi::freePool(void *pool)
-{
-    [wf freePool:(NSAutoreleasePool*)pool];
-}
+void * WFApi::getPool() { return (void*)[wf getPool]; }
+void WFApi::freePool(void *pool) { [wf freePool:(NSAutoreleasePool*)pool]; }

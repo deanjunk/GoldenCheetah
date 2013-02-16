@@ -31,7 +31,6 @@
 // Three current realtime device types supported are:
 #include "RealtimeController.h"
 #include "ComputrainerController.h"
-#include "ANTplusController.h"
 #include "ANTlocalController.h"
 #include "NullController.h"
 #ifdef GC_HAVE_WFAPI
@@ -68,19 +67,6 @@ TrainTool::TrainTool(MainWindow *parent, const QDir &home) : GcWindow(parent), h
 
     // don't set the source for telemetry
     bpmTelemetry = wattsTelemetry = kphTelemetry = rpmTelemetry = -1;
-
-#if 0 // not in this release .. or for a while TBH
-    serverTree = new QTreeWidget;
-    serverTree->setFrameStyle(QFrame::NoFrame);
-    serverTree->setColumnCount(1);
-    serverTree->setSelectionMode(QAbstractItemView::SingleSelection);
-    serverTree->header()->hide();
-    serverTree->setAlternatingRowColors (false);
-    serverTree->setIndentation(5);
-    allServers = new QTreeWidgetItem(serverTree, HEAD_TYPE);
-    allServers->setText(0, tr("Race Servers"));
-    serverTree->expandItem(allServers);
-#endif
 
 #if defined Q_OS_MAC || defined GC_HAVE_VLC
     videoModel = new QSqlTableModel(this, trainDB->connection());
@@ -307,7 +293,6 @@ TrainTool::TrainTool(MainWindow *parent, const QDir &home) : GcWindow(parent), h
 
     cl->addWidget(trainSplitter);
     trainSplitter->addWidget(deviceTree);
-    //trainSplitter->addWidget(serverTree);
     trainSplitter->addWidget(workoutTree);
 #if defined Q_OS_MAC || defined GC_HAVE_VLC
     trainSplitter->addWidget(mediaTree);
@@ -321,9 +306,9 @@ TrainTool::TrainTool(MainWindow *parent, const QDir &home) : GcWindow(parent), h
 #endif
 
     // handle config changes
-    //connect(serverTree,SIGNAL(itemSelectionChanged()), this, SLOT(serverTreeWidgetSelectionChanged()));
     connect(deviceTree,SIGNAL(itemSelectionChanged()), this, SLOT(deviceTreeWidgetSelectionChanged()));
     connect(deviceTree,SIGNAL(customContextMenuRequested(const QPoint &)), this, SLOT(deviceTreeMenuPopup(const QPoint &)));
+
 #if defined Q_OS_MAC || defined GC_HAVE_VLC
     connect(mediaTree->selectionModel(), SIGNAL(selectionChanged(QItemSelection, QItemSelection)),
                             this, SLOT(mediaTreeWidgetSelectionChanged()));
@@ -361,6 +346,8 @@ TrainTool::TrainTool(MainWindow *parent, const QDir &home) : GcWindow(parent), h
     recordFile = NULL;
     status = 0;
     status |= RT_MODE_ERGO;         // ergo mode by default
+    mode = ERG;
+
     displayWorkoutLap = displayLap = 0;
     pwrcount = 0;
     cadcount = 0;
@@ -419,9 +406,8 @@ TrainTool::configChanged()
     setProperty("color", GColor(CRIDEPLOTBACKGROUND));
 
     // DEVICES
+
     // zap whats there
-    //QList<QTreeWidgetItem *> servers = allServers->takeChildren();
-    //for (int i=0; i<servers.count(); i++) delete servers.at(i);
     QList<QTreeWidgetItem *> devices = allDevices->takeChildren();
     for (int i=0; i<devices.count(); i++) delete devices.at(i);
 
@@ -437,35 +423,28 @@ TrainTool::configChanged()
     DeviceConfigurations all;
     Devices = all.getList();
     for (int i=0; i<Devices.count(); i++) {
-        if (Devices.at(i).type == DEV_GSERVER) {
-            //QTreeWidgetItem *server = new QTreeWidgetItem(allServers, i);
-            //server->setText(0, Devices.at(i).name);
-        } else {
 
-            // add to the selection tree
-            QTreeWidgetItem *device = new QTreeWidgetItem(allDevices, i);
-            device->setText(0, Devices.at(i).name);
+        // add to the selection tree
+        QTreeWidgetItem *device = new QTreeWidgetItem(allDevices, i);
+        device->setText(0, Devices.at(i).name);
 
-            // Create the controllers for each device
-            // we can call upon each of these when we need
-            // to interact with the device
-            if (Devices.at(i).type == DEV_ANTPLUS) {
-                Devices[i].controller = new ANTplusController(this, &Devices[i]);
-            } else if (Devices.at(i).type == DEV_CT) {
-                Devices[i].controller = new ComputrainerController(this, &Devices[i]);
+        // Create the controllers for each device
+        // we can call upon each of these when we need
+        // to interact with the device
+        if (Devices.at(i).type == DEV_CT) {
+            Devices[i].controller = new ComputrainerController(this, &Devices[i]);
 #ifdef GC_HAVE_LIBUSB
-            } else if (Devices.at(i).type == DEV_FORTIUS) {
-                Devices[i].controller = new FortiusController(this, &Devices[i]);
+        } else if (Devices.at(i).type == DEV_FORTIUS) {
+            Devices[i].controller = new FortiusController(this, &Devices[i]);
 #endif
-            } else if (Devices.at(i).type == DEV_NULL) {
-                Devices[i].controller = new NullController(this, &Devices[i]);
-            } else if (Devices.at(i).type == DEV_ANTLOCAL) {
-                Devices[i].controller = new ANTlocalController(this, &Devices[i]);
+        } else if (Devices.at(i).type == DEV_NULL) {
+            Devices[i].controller = new NullController(this, &Devices[i]);
+        } else if (Devices.at(i).type == DEV_ANTLOCAL) {
+            Devices[i].controller = new ANTlocalController(this, &Devices[i]);
 #ifdef GC_HAVE_WFAPI
-            } else if (Devices.at(i).type == DEV_KICKR) {
-                Devices[i].controller = new KickrController(this, &Devices[i]);
+        } else if (Devices.at(i).type == DEV_KICKR) {
+            Devices[i].controller = new KickrController(this, &Devices[i]);
 #endif
-            }
         }
     }
 
@@ -473,7 +452,9 @@ TrainTool::configChanged()
     if (Devices.count()) {
         deviceTree->setCurrentItem(allDevices->child(0));
     }
-
+    // And select default workout to Ergo
+    QModelIndex firstWorkout = sortModel->index(0, 0, QModelIndex());
+    workoutTree->setCurrentIndex(firstWorkout);
     // Athlete
     FTP=285; // default to 285 if zones are not set
     int range = main->zones()->whichRange(QDate::currentDate());
@@ -747,12 +728,6 @@ void TrainTool::Start()       // when start button is pressed
 
         // Stop users from selecting different devices
         // media or workouts whilst a workout is in progress
-        // lets reset libusb to clear buffers
-        // and reset connection to device
-        // this appeara to help with ANT USB2 sticks
-#ifdef GC_HAVE_LIBUSB
-        //usb_init(); //XXX lets not its a clusterfuck
-#endif
 
         // if we have selected multiple devices lets
         // configure the series we collect from each one
@@ -800,7 +775,6 @@ void TrainTool::Start()       // when start button is pressed
         status |=RT_RUNNING;
 
         // should we be streaming too?
-        //setStreamController();
         if (streamController != NULL) status |= RT_STREAMING;
 
         load_period.restart();
@@ -965,8 +939,6 @@ void TrainTool::Stop(int deviceStatus)        // when stop button is pressed
     main->notifyStop();
 
     // Re-enable gui elements
-    //recordSelector->setEnabled(true);
-
     // reset counters etc
     pwrcount = 0;
     cadcount = 0;
@@ -988,13 +960,13 @@ void TrainTool::Stop(int deviceStatus)        // when stop button is pressed
 // Called by push devices (e.g. ANT+)
 void TrainTool::updateData(RealtimeData &rtData)
 {
-        displayPower = rtData.getWatts();
-        displayCadence = rtData.getCadence();
-        displayHeartRate = rtData.getHr();
-        displaySpeed = rtData.getSpeed();
-        load = rtData.getLoad();
+    displayPower = rtData.getWatts();
+    displayCadence = rtData.getCadence();
+    displayHeartRate = rtData.getHr();
+    displaySpeed = rtData.getSpeed();
+    load = rtData.getLoad();
     // Gradient not supported
-        return;
+    return;
 }
 
 //----------------------------------------------------------------------
@@ -1040,6 +1012,7 @@ void TrainTool::guiUpdate()           // refreshes the telemetry
                 if (Devices[dev].type == DEV_CT) {
                     memcpy((uint8_t*)rtData.spinScan, (uint8_t*)local.spinScan, 24);
                     rtData.setLoad(local.getLoad()); // and get load in case it was adjusted
+                    rtData.setSlope(local.getSlope()); // and get slope in case it was adjusted
                     // to within defined limits
                 }
 
@@ -1057,8 +1030,8 @@ void TrainTool::guiUpdate()           // refreshes the telemetry
             }
 
             // Distance assumes current speed for the last second. from km/h to km/sec
-            displayDistance += displaySpeed / (5 * 3600); // XXX assumes 200ms refreshrate
-            displayWorkoutDistance += displaySpeed / (5 * 3600); // XXX assumes 200ms refreshrate
+            displayDistance += displaySpeed / (5 * 3600); // assumes 200ms refreshrate
+            displayWorkoutDistance += displaySpeed / (5 * 3600); // assumes 200ms refreshrate
             rtData.setDistance(displayDistance);
 
             // time
@@ -1124,6 +1097,7 @@ void TrainTool::guiUpdate()           // refreshes the telemetry
             displayHeartRate = rtData.getHr();
             displaySpeed = rtData.getSpeed();
             load = rtData.getLoad();
+            slope = rtData.getSlope();
 
             // virtual speed
             double crr = 0.004f; // typical for asphalt surfaces
@@ -1209,19 +1183,6 @@ void TrainTool::warnnoConfig()
 //----------------------------------------------------------------------
 // STREAMING FUNCTION
 //----------------------------------------------------------------------
-#if 0
-TrainTool::SelectStream(int index)
-{
-
-    if (index > 0) {
-        status |= RT_STREAMING;
-        setStreamController();
-    } else {
-        status &= ~RT_STREAMING;
-    }
-}
-#endif
-
 void
 TrainTool::streamUpdate()
 {
@@ -1350,11 +1311,20 @@ void TrainTool::Calibrate()
         if (status & RT_RECORDING) disk_timer->start(SAMPLERATE);
         main->notifyUnPause(); // get video started again, amongst other things
 
-        // back to ergo/slope mode
-        if (status&RT_MODE_ERGO)
-            foreach(int dev, devices()) Devices[dev].controller->setMode(RT_MODE_ERGO);
-        else
-            foreach(int dev, devices()) Devices[dev].controller->setMode(RT_MODE_SPIN);
+        // back to ergo/slope mode and restore load/gradient
+        if (status&RT_MODE_ERGO) {
+
+            foreach(int dev, devices()) {
+                Devices[dev].controller->setMode(RT_MODE_ERGO);
+                Devices[dev].controller->setLoad(load);
+            }
+        } else {
+
+            foreach(int dev, devices()) {
+                Devices[dev].controller->setMode(RT_MODE_SPIN);
+                Devices[dev].controller->setGradient(slope);
+            }
+        }
 
     } else {
 
@@ -1523,7 +1493,7 @@ void TrainTool::adjustIntensity()
 
     bool insertedNow = main->getNow() ? false : true; // don't add if at start
 
-    //XXX what about gradient courses?
+    // what about gradient courses?
     ErgFilePoint last;
     for(int i = 0; i < main->currentErgFile()->Points.count(); i++) {
 

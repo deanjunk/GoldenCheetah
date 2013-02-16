@@ -33,7 +33,7 @@
 #include <math.h>
 
 RideSummaryWindow::RideSummaryWindow(MainWindow *mainWindow, bool ridesummary) :
-     GcWindow(mainWindow), mainWindow(mainWindow), ridesummary(ridesummary), useCustom(false), useToToday(false)
+     GcChartWindow(mainWindow), mainWindow(mainWindow), ridesummary(ridesummary), useCustom(false), useToToday(false)
 {
     setInstanceName("Ride Summary Window");
     setRideItem(NULL);
@@ -90,7 +90,7 @@ RideSummaryWindow::RideSummaryWindow(MainWindow *mainWindow, bool ridesummary) :
         connect(dateSetting, SIGNAL(useStandardRange()), this, SLOT(useStandardRange()));
 
     }
-    setLayout(vlayout);
+    setChartLayout(vlayout);
 }
 
 void
@@ -111,7 +111,10 @@ RideSummaryWindow::rideItemChanged()
     if (_connected) { // in case it was set to null!
         connect (_connected, SIGNAL(rideMetadataChanged()), this, SLOT(metadataChanged()));
         // and now refresh
+        setIsBlank(false);
         refresh();
+    } else {
+        setIsBlank(true);
     }
 }
 
@@ -124,8 +127,7 @@ RideSummaryWindow::metadataChanged()
 void
 RideSummaryWindow::refresh()
 {
-    // XXX: activeTab is never equaly to RideSummaryWindow right now because
-    // it's wrapped in the summarySplitter in MainWindow.
+    // if we're summarising a ride but have no ride to summarise
     if (ridesummary && !myRideItem) {
 	    rideSummary->page()->mainFrame()->setHtml("");
         return;
@@ -357,7 +359,7 @@ RideSummaryWindow::htmlSummary() const
             else time_in_zone[i] = SummaryMetrics::getAggregated(timeInZones[i], data, useMetricUnits, true).toDouble();
         }
         summary += tr("<h3>Power Zones</h3>");
-        summary += mainWindow->zones()->summarize(rideItem->zoneRange(), time_in_zone); //XXX aggregating?
+        summary += mainWindow->zones()->summarize(rideItem->zoneRange(), time_in_zone); //aggregating
     }
 
     //
@@ -373,7 +375,7 @@ RideSummaryWindow::htmlSummary() const
         }
 
         summary += tr("<h3>Heart Rate Zones</h3>");
-        summary += mainWindow->hrZones()->summarize(rideItem->hrZoneRange(), time_in_zone); //XXX aggregating
+        summary += mainWindow->hrZones()->summarize(rideItem->hrZoneRange(), time_in_zone); //aggregating
     }
 
     // Only get interval summary for a ride summary

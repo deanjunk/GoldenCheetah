@@ -71,7 +71,7 @@ ErgFile::fromContent(QString contents, MainWindow *main)
 
 void ErgFile::reload()
 {
-    // which parser to call? XXX should look at moving to an ergfile factory
+    // which parser to call? NOTE: we should look at moving to an ergfile factory
     // like we do with ride files if we end up with lots of different formats
     if (filename.endsWith(".pgmf", Qt::CaseInsensitive)) parseTacx();
     else parseComputrainer();
@@ -713,7 +713,8 @@ ErgFile::gradientAt(long x, int &lapnum)
             if (x>=Laps.at(i).x) lap += 1;
         }
         lapnum = lap;
-    }
+
+    } else lapnum = 0;
 
     // find right section of the file
     while (x < Points.at(leftPoint).x || x > Points.at(rightPoint).x) {

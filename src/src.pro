@@ -169,6 +169,8 @@ macx {
         # Linux or Windows support for the WF API from Wahoo (yet)
         HEADERS += WFApi.h Kickr.h KickrController.h
         SOURCES += Kickr.cpp KickrController.cpp
+        HEADERS += BT40.h BT40Controller.h
+        SOURCES += BT40.cpp BT40Controller.cpp
         OBJECTIVE_SOURCES += WFApi.mm
 
     }
@@ -209,13 +211,10 @@ win32 {
 # local qxt widgets - rather than add another dependency on libqxt
 DEFINES += QXT_STATIC
 SOURCES += ../qxt/src/qxtspanslider.cpp \
-           ../qxt/src/qxtscheduleview.cpp \
-           ../qxt/src/qxtscheduleview_p.cpp \
-           ../qxt/src/qxtscheduleheaderwidget.cpp \
-           ../qxt/src/qxtscheduleviewheadermodel_p.cpp \
-           ../qxt/src/qxtscheduleitemdelegate.cpp \
-           ../qxt/src/qxtstyleoptionscheduleviewitem.cpp \
-           ../qxt/src/qxtstringspinbox.cpp \
+           ../qxt/src/qxtstringspinbox.cpp
+HEADERS += ../qxt/src/qxtspanslider.h \
+           ../qxt/src/qxtspanslider_p.h \
+           ../qxt/src/qxtstringspinbox.h 
 
 isEmpty( QTSOAP_INSTALL ) {
     include( ../qtsolutions/soap/qtsoap.pri )
@@ -226,23 +225,12 @@ HEADERS += TPUpload.h TPUploadDialog.h TPDownload.h TPDownloadDialog.h
 SOURCES += TPUpload.cpp TPUploadDialog.cpp TPDownload.cpp TPDownloadDialog.cpp
 DEFINES += GC_HAVE_SOAP
 
-HEADERS += ../qxt/src/qxtspanslider.h \
-           ../qxt/src/qxtspanslider_p.h \
-           ../qxt/src/qxtscheduleview.h \
-           ../qxt/src/qxtscheduleview_p.h \
-           ../qxt/src/qxtscheduleheaderwidget.h \
-           ../qxt/src/qxtscheduleviewheadermodel_p.h \
-           ../qxt/src/qxtscheduleitemdelegate.h \
-           ../qxt/src/qxtstyleoptionscheduleviewitem.h \
-           ../qxt/src/qxtstringspinbox.h \
-
 HEADERS += \
         AboutDialog.h \
         AddDeviceWizard.h \
         AddIntervalDialog.h \
         Aerolab.h \
         AerolabWindow.h \
-        AthleteTool.h \
         AllPlot.h \
         AllPlotWindow.h \
         ANT.h \
@@ -251,7 +239,6 @@ HEADERS += \
         ANTMessage.h \
         ANTMessages.h \
         ANTlocalController.h \
-        ANTplusController.h \
         BatchExportDialog.h \
         BestIntervalDialog.h \
         BinRideFile.h \
@@ -332,7 +319,6 @@ HEADERS += \
         MetadataWindow.h \
         MetricAggregator.h \
         NewCyclistDialog.h \
-        MultiWindow.h \
         NullController.h \
         Pages.h \
         PerfPlot.h \
@@ -345,12 +331,9 @@ HEADERS += \
         PowerTapUtil.h \
         PwxRideFile.h \
         ProtocolHandler.h \
-        QuarqdClient.h \
         QuarqParser.h \
         QuarqRideFile.h \
-        QxtScheduleViewProxy.h \
         RawRideFile.h \
-        RaceDispatcher.h \
         RealtimeData.h \
         RealtimePlotWindow.h \
         RealtimeController.h \
@@ -378,8 +361,6 @@ HEADERS += \
         SeasonParser.h \
         Serial.h \
         Settings.h \
-        SimpleNetworkController.h \
-        SimpleNetworkClient.h \
         SpecialFields.h \
         SpinScanPlot.h \
         SpinScanPolarPlot.h \
@@ -409,8 +390,6 @@ HEADERS += \
         TreeMapPlot.h \
         TtbDialog.h \
         Units.h \
-        WeeklySummaryWindow.h \
-        WeeklyViewItemDelegate.h \
         WithingsDownload.h \
         WkoRideFile.h \
         WorkoutPlotWindow.h \
@@ -434,13 +413,11 @@ SOURCES += \
         AerolabWindow.cpp \
         AllPlot.cpp \
         AllPlotWindow.cpp \
-        AthleteTool.cpp \
         ANT.cpp \
         ANTChannel.cpp \
         ANTLogger.cpp \
         ANTMessage.cpp \
         ANTlocalController.cpp \
-        ANTplusController.cpp \
         BasicRideMetrics.cpp \
         BatchExportDialog.cpp \
         BestIntervalDialog.cpp \
@@ -529,7 +506,6 @@ SOURCES += \
         MetadataWindow.cpp \
         MetricAggregator.cpp \
         NewCyclistDialog.cpp \
-        MultiWindow.cpp \
         NullController.cpp \
         Pages.cpp \
         PeakPower.cpp \
@@ -543,10 +519,8 @@ SOURCES += \
         PowerTapUtil.cpp \
         Protocolhandler.cpp \
         PwxRideFile.cpp \
-        QuarqdClient.cpp \
         QuarqParser.cpp \
         QuarqRideFile.cpp \
-        RaceDispatcher.cpp \
         RawRideFile.cpp \
         RealtimeData.cpp \
         RealtimeController.cpp \
@@ -573,8 +547,6 @@ SOURCES += \
         SeasonParser.cpp \
         Serial.cpp \
         Settings.cpp \
-        SimpleNetworkController.cpp \
-        SimpleNetworkClient.cpp \
         SmallPlot.cpp \
         SpecialFields.cpp \
         SpinScanPlot.cpp \
@@ -609,7 +581,6 @@ SOURCES += \
         TRIMPPoints.cpp \
         WattsPerKilogram.cpp \
         WithingsDownload.cpp \
-        WeeklySummaryWindow.cpp \
         WkoRideFile.cpp \
         WorkoutPlotWindow.cpp \
         WorkoutWizard.cpp \

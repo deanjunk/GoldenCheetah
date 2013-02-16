@@ -49,8 +49,10 @@ LTMSidebar::LTMSidebar(MainWindow *parent, const QDir &home) : QWidget(parent), 
     mainLayout->setSpacing(0);
     setContentsMargins(0,0,0,0);
 
-    dateRangeTree = new QTreeWidget;
+    dateRangeTree = new SeasonTreeView;
     allDateRanges = new QTreeWidgetItem(dateRangeTree, ROOT_TYPE);
+    // Drop for Seasons
+    allDateRanges->setFlags(Qt::ItemIsEnabled | Qt::ItemIsDropEnabled);
     allDateRanges->setText(0, tr("Date Ranges"));
     dateRangeTree->setFrameStyle(QFrame::NoFrame);
     dateRangeTree->setColumnCount(1);
@@ -122,6 +124,7 @@ LTMSidebar::LTMSidebar(MainWindow *parent, const QDir &home) : QWidget(parent), 
     connect(dateRangeTree,SIGNAL(itemSelectionChanged()), this, SLOT(dateRangeTreeWidgetSelectionChanged()));
     connect(dateRangeTree,SIGNAL(customContextMenuRequested(const QPoint &)), this, SLOT(dateRangePopup(const QPoint &)));
     connect(dateRangeTree,SIGNAL(itemChanged(QTreeWidgetItem *,int)), this, SLOT(dateRangeChanged(QTreeWidgetItem*, int)));
+    connect(dateRangeTree,SIGNAL(itemMoved(QTreeWidgetItem *,int, int)), this, SLOT(dateRangeMoved(QTreeWidgetItem*, int, int)));
     connect(eventTree,SIGNAL(customContextMenuRequested(const QPoint &)), this, SLOT(eventPopup(const QPoint &)));
     // GC signal
     connect(main, SIGNAL(configChanged()), this, SLOT(configChanged()));
@@ -208,14 +211,16 @@ LTMSidebar::resetSeasons()
     for (i=0; i <seasons->seasons.count(); i++) {
         Season season = seasons->seasons.at(i);
         QTreeWidgetItem *add = new QTreeWidgetItem(allDateRanges, season.getType());
+        // No Drag/Drop for temporary  Season
+        if (season.getType() == Season::temporary)
+            add->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled);
+        else
+            add->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled | Qt::ItemIsDragEnabled);
         add->setText(0, season.getName());
     }
 
     // get current back!
-    if (now != "") ; //XXX 
-    else {
-        allDateRanges->child(0)->setSelected(true); // just select first child
-    }
+    if (now == "") allDateRanges->child(0)->setSelected(true); // just select first child
     active = false;
 }
 
@@ -329,14 +334,6 @@ LTMSidebar::eventPopup(QPoint pos)
 }
 
 void
-LTMSidebar::renameRange() //XXX deprecated
-{
-    // go edit the name
-    activeDateRange->setFlags(activeDateRange->flags() | Qt::ItemIsEditable);
-    dateRangeTree->editItem(activeDateRange, 0);
-}
-
-void
 LTMSidebar::dateRangeChanged(QTreeWidgetItem*item, int)
 {
     if (item != activeDateRange || active == true) return;
@@ -351,6 +348,30 @@ LTMSidebar::dateRangeChanged(QTreeWidgetItem*item, int)
 
     // signal date selected changed
     //dateRangeSelected(&seasons->seasons[index]);
+}
+
+void
+LTMSidebar::dateRangeMoved(QTreeWidgetItem*item, int oldposition, int newposition)
+{
+    // no drop in the temporary seasons
+    if (newposition>allDateRanges->childCount()-12) {
+        newposition = allDateRanges->childCount()-12;
+        allDateRanges->removeChild(item);
+        allDateRanges->insertChild(newposition, item);
+    }
+
+    // report the move in the seasons
+    seasons->seasons.move(oldposition, newposition);
+
+    // save changes away
+    active = true;
+    seasons->writeSeasons();
+    active = false;
+
+    // deselect actual selection
+    dateRangeTree->selectedItems().first()->setSelected(false);
+    // select the move/drop item
+    item->setSelected(true);
 }
 
 void
@@ -479,9 +500,6 @@ LTMSidebar::editEvent()
 void
 LTMSidebar::setSummary(DateRange dateRange)
 {
-    // are we metric?
-    bool useMetricUnits = (appsettings->value(this, GC_UNIT).toString() == "Metric");
-
     // where we construct the text
     QString summaryText("");
 
@@ -536,7 +554,7 @@ LTMSidebar::setSummary(DateRange dateRange)
                               "<body>"
                               "<center>");
 
-        for (int i=0; i<4; i++) { //XXX taken out maximums -- too much info -- looks ugly
+        for (int i=0; i<4; i++) {
 
             QString aggname;
             QStringList list;
@@ -575,15 +593,15 @@ LTMSidebar::setSummary(DateRange dateRange)
 
                 const RideMetric *metric = RideMetricFactory::instance().rideMetric(metricname);
 
-                QString value = SummaryMetrics::getAggregated(metricname, results, useMetricUnits);
+                QString value = SummaryMetrics::getAggregated(metricname, results, main->useMetricUnits);
 
                 // Maximum Max and Average Average looks nasty, remove from name for display
                 QString s = metric ? metric->name().replace(QRegExp(tr("^(Average|Max) ")), "") : "unknown";
 
                 // don't show units for time values
-                if (metric && (metric->units(useMetricUnits) == "seconds" ||
-                               metric->units(useMetricUnits) == tr("seconds") ||
-                               metric->units(useMetricUnits) == "")) {
+                if (metric && (metric->units(main->useMetricUnits) == "seconds" ||
+                               metric->units(main->useMetricUnits) == tr("seconds") ||
+                               metric->units(main->useMetricUnits) == "")) {
 
                     summaryText += QString("<tr><td>%1:</td><td align=\"right\"> %2</td>")
                                             .arg(s)
@@ -592,7 +610,7 @@ LTMSidebar::setSummary(DateRange dateRange)
                 } else {
                     summaryText += QString("<tr><td>%1(%2):</td><td align=\"right\"> %3</td>")
                                             .arg(s)
-                                            .arg(metric ? metric->units(useMetricUnits) : "unknown")
+                                            .arg(metric ? metric->units(main->useMetricUnits) : "unknown")
                                             .arg(value);
                 }
             }

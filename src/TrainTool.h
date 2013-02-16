@@ -63,7 +63,6 @@
 
 class RealtimeController;
 class ComputrainerController;
-class ANTplusController;
 class ANTlocalController;
 class NullController;
 class RealtimePlot;
@@ -145,9 +144,6 @@ class TrainTool : public GcWindow
             msgDialog->close();
             delete msgDialog;
         };
-
-        //XXX void workoutTreeMenuPopup(const QPoint &);
-        //XXX void mediaTreeMenuPopup(const QPoint &);
 
     public slots:
         void configChanged();

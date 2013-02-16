@@ -45,7 +45,7 @@ ModelWindow::addStandardChannels(QComboBox *box)
 }
 
 ModelWindow::ModelWindow(MainWindow *parent, const QDir &home) :
-    GcWindow(parent), home(home), main(parent), ride(NULL), current(NULL)
+    GcChartWindow(parent), home(home), main(parent), ride(NULL), current(NULL)
 {
     setInstanceName("3D Window");
 
@@ -68,7 +68,7 @@ ModelWindow::ModelWindow(MainWindow *parent, const QDir &home) :
     mainLayout->addWidget(zpane);
     mainLayout->addWidget(modelPlot);
     mainLayout->addWidget(nodata);
-    setLayout(mainLayout);
+    setChartLayout(mainLayout);
 
     // preset Values
     presetLabel = new QLabel(tr("Analyse"), this);
@@ -225,9 +225,9 @@ ModelWindow::setData(bool adjustPlot)
     settings.y = ySelector->itemData(ySelector->currentIndex()).toInt();
     settings.z = zSelector->itemData(zSelector->currentIndex()).toInt();
     settings.color = colorSelector->itemData(colorSelector->currentIndex()).toInt();
-    settings.xbin = binWidthSlider->value(); // XXX fixed to single bin width
-    settings.ybin = binWidthSlider->value(); // XXX due to issues with bar geometry
-    settings.crop = false; // XXX not implemented
+    settings.xbin = binWidthSlider->value();
+    settings.ybin = binWidthSlider->value();
+    settings.crop = false; // not implemented yet
     settings.zpane = 0;
     settings.ignore = ignore->isChecked();
     settings.gridlines = grid->isChecked();

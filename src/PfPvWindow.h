@@ -27,7 +27,26 @@ class MainWindow;
 class PfPvPlot;
 class RideItem;
 
-class PfPvWindow : public GcWindow
+class PfPvDoubleClickPicker: public QwtPlotPicker {
+    Q_OBJECT
+
+public:
+    explicit PfPvDoubleClickPicker( PfPvPlot *plot );
+
+Q_SIGNALS:
+    void doubleClicked(int cad, int watts);
+
+protected:
+    PfPvPlot    *pfPvPlot;
+
+    QPoint pfPvTransform( const QPointF ) const;
+
+    QwtText trackerTextF( const QPointF & ) const;
+    void widgetMouseDoubleClickEvent( QMouseEvent * );
+
+};
+
+class PfPvWindow : public GcChartWindow
 {
     Q_OBJECT
     G_OBJECT
@@ -45,8 +64,6 @@ class PfPvWindow : public GcWindow
 
         // reveal
         bool hasReveal() { return true; }
-        void reveal() { revealControls->show(); revealAnim->start(); }
-        void unreveal() { unrevealAnim->start(); revealControls->hide(); }
 
         // get/set properties
         QString watts() const { return qaCPValue->text(); }
@@ -79,13 +96,14 @@ class PfPvWindow : public GcWindow
         void setrMergeIntervalsPfPvFromCheckBox();
         void setFrameIntervalsPfPvFromCheckBox();
         void setrFrameIntervalsPfPvFromCheckBox();
+        void doubleClicked(int, int);
 
     protected:
 
         MainWindow *mainWindow;
         PfPvPlot *pfPvPlot;
-        QPropertyAnimation *revealAnim, *unrevealAnim;
         QwtPlotZoomer *pfpvZoomer;
+        PfPvDoubleClickPicker *doubleClickPicker;
         QCheckBox *shadeZonesPfPvCheckBox;
         QCheckBox *mergeIntervalPfPvCheckBox;
         QCheckBox *frameIntervalPfPvCheckBox;
@@ -96,7 +114,6 @@ class PfPvWindow : public GcWindow
 
     private:
         // reveal controls
-        QWidget *revealControls;
         QCheckBox *rShade, *rMergeInterval, *rFrameInterval;
 };
 

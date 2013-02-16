@@ -18,9 +18,6 @@
 
 #include "Kickr.h"
 
-/* ----------------------------------------------------------------------
- * CONSTRUCTOR/DESRTUCTOR
- * ---------------------------------------------------------------------- */
 Kickr::Kickr(QObject *parent,  DeviceConfiguration *devConf) : QThread(parent)
 {
     this->parent = parent;
@@ -29,19 +26,16 @@ Kickr::Kickr(QObject *parent,  DeviceConfiguration *devConf) : QThread(parent)
     mode = -1;
     load = 100;
     slope = 1.0;
+
+    connect(WFApi::getInstance(), SIGNAL(discoveredDevices(int,bool)), this, SLOT(discoveredDevices(int,bool)));
 }
 
 Kickr::~Kickr()
 {
 }
 
-/* ----------------------------------------------------------------------
- * SET
- * ---------------------------------------------------------------------- */
-void Kickr::setDevice(QString)
-{
-    // not required
-}
+// not required
+void Kickr::setDevice(QString) { }
 
 void Kickr::setMode(int mode, double load, double gradient)
 {
@@ -68,10 +62,6 @@ void Kickr::setGradient(double gradient)
     pvars.unlock();
 }
 
-
-/* ----------------------------------------------------------------------
- * GET
- * ---------------------------------------------------------------------- */
 
 int Kickr::getMode()
 {
@@ -135,7 +125,7 @@ int Kickr::quit(int code)
 }
 
 /*----------------------------------------------------------------------
- * THREADED CODE - READS TELEMETRY AND SENDS COMMANDS TO KEEP CT ALIVE
+ * MAIN THREAD - READS TELEMETRY AND UPDATES LOAD/GRADIENT ON KICKR
  *----------------------------------------------------------------------*/
 void Kickr::run()
 {
@@ -149,45 +139,50 @@ void Kickr::run()
         return; // open failed!
     }
 
+    int connectionloops =0;
+
     running = true;
     while(running) {
 
-        // make sure we are the right mode
-        if (currentmode != mode) {
+        // only get busy if we're actually connected
+        if (WFApi::getInstance()->isConnected(sd)) {
 
-            switch (mode) {
+            // We ALWAYS set load for each loop. This is because
+            // even though the device reports as connected we need
+            // to wait before it really is. So we just keep on
+            // sending the current mode/load. It doesn't cost us
+            // anything since all devices are powered.
 
-            default:
-            case RT_MODE_ERGO :
-                currentmode = RT_MODE_ERGO;
-                WFApi::getInstance()->setErgoMode();
-                break;
+            // it does generate a few error messages though..
+            // and the connection takes about 25 secs to get
+            // up to speed.
 
-            case RT_MODE_SLOPE :
-                currentmode = RT_MODE_SLOPE;
-                WFApi::getInstance()->setSlopeMode();
-                break;
+            // set load - reset it if generated watts don't match .. 
+            if (mode == RT_MODE_ERGO) {
+                WFApi::getInstance()->setErgoMode(sd);
+                WFApi::getInstance()->setLoad(sd, load);
+                currentload = load;
+                currentmode = mode;
+            }
 
+            // set slope
+            if (mode == RT_MODE_SLOPE && currentslope) {
+                WFApi::getInstance()->setSlopeMode(sd);
+                WFApi::getInstance()->setSlope(sd, slope);
+                currentslope = slope;
+                currentmode = mode;
+            }
+        } else {
+            // 100ms in each loop, 30secs is 300 loops
+            if (++connectionloops > 300) {
+                // give up waiting for connection
+                quit(-1);
             }
         }
 
-        // set load
-        if (mode == RT_MODE_ERGO && currentload != load) {
-            WFApi::getInstance()->setLoad(load);
-            currentload = load;
-        }
-
-        // set slope
-        if (mode == RT_MODE_SLOPE && currentslope != slope) {
-            WFApi::getInstance()->setSlope(slope);
-            currentslope = slope;
-        }
-
-        msleep(100);
-
-        if (WFApi::getInstance()->hasData()) {
+        if (WFApi::getInstance()->hasData(sd)) {
             pvars.lock();
-            WFApi::getInstance()->getRealtimeData(&rt);
+            WFApi::getInstance()->getRealtimeData(sd, &rt);
 
             // set speed from wheelRpm and configured wheelsize
             double x = rt.getWheelRpm();
@@ -195,10 +190,31 @@ void Kickr::run()
             else rt.setSpeed(x * 2.10 * 60 / 1000);
             pvars.unlock();
         }
+
+        // lets not hog cpu
+        msleep(100);
     }
 
     disconnectKickr();
     quit(0);
+}
+
+void
+Kickr::discoveredDevices(int n, bool finished)
+{
+    WFApi *w = WFApi::getInstance();
+
+    // need to emit signal with device uuid and type
+    // this is used by the add device wizard.
+    // but only emit as they are found, not at the end
+    // when search times out -- we want them as they
+    // arrive.
+    if (!finished && w->deviceSubType(n-1) == WFApi::WF_SENSOR_SUBTYPE_BIKE_POWER_KICKR) { 
+        qDebug()<<"KIKCR? discovered a device.."
+                <<w->deviceUUID(n-1)
+                <<w->deviceType(n-1);
+        emit foundDevice(w->deviceUUID(n-1), w->deviceType(n-1));
+    }
 }
 
 bool
@@ -206,7 +222,7 @@ Kickr::find()
 {
     WFApi *w = WFApi::getInstance();
 
-    if (w->discoverDevicesOfType(1,1,1) == false) return false;
+    if (w->discoverDevicesOfType(WFApi::WF_SENSORTYPE_BIKE_POWER) == false) return false;
 
     QEventLoop loop;
     connect(w, SIGNAL(discoveredDevices(int,bool)), &loop, SLOT(quit()));
@@ -223,34 +239,14 @@ Kickr::find()
 int
 Kickr::connectKickr()
 {
+    // is BTLE even enabled?
+    if (WFApi::getInstance()->isBTLEEnabled() == false) return -1;
+
     // get a pool for this thread
     pool = WFApi::getInstance()->getPool();
 
-    // do we even have BTLE hardware?
-    if (WFApi::getInstance()->isBTLEEnabled() == false) {
-        WFApi::getInstance()->freePool(pool);
-        return (-1);
-    }
-
-    // discover first...
-    if (scanned == false) find();
-
-    // connect
-    bool found = false;
-    WFApi *w = WFApi::getInstance();
-    int i;
-    for (i=0; i<w->deviceCount(); i++) {
-        if (w->deviceUUID(i) == devConf->portSpec) {
-            found = true;
-            break;
-        }
-    }
-    if (found == false) {
-        WFApi::getInstance()->freePool(pool);
-        return (-1);
-    }
-
-    w->connectDevice(i);
+    // kick off connection and assume it is gonna be ok
+    sd = WFApi::getInstance()->connectDevice(devConf->portSpec);
     return 0;
 }
 
@@ -258,7 +254,7 @@ int
 Kickr::disconnectKickr()
 {
     // disconnect
-    WFApi::getInstance()->disconnectDevice();
+    WFApi::getInstance()->disconnectDevice(sd);
     connected = false;
 
     // clear that pool now we're done

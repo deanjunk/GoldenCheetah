@@ -34,8 +34,8 @@
 #include "MainWindow.h"
 
 class LTMPlotBackground;
+class LTMWindow;
 class LTMPlotZoneLabel;
-class LTMPlotContainer;
 class LTMScaleDraw;
 
 class LTMPlot : public QwtPlot
@@ -45,7 +45,7 @@ class LTMPlot : public QwtPlot
 
 
     public:
-        LTMPlot(LTMPlotContainer *, MainWindow *main, QDir home);
+        LTMPlot(LTMWindow *, MainWindow *main, QDir home);
         ~LTMPlot();
         void setData(LTMSettings *);
         void setAxisTitle(int axis, QString label);
@@ -53,9 +53,6 @@ class LTMPlot : public QwtPlot
     public slots:
         void pointHover(QwtPlotCurve*, int);
         void pointClicked(QwtPlotCurve*, int); // point clicked
-        void changeValue(QwtPlotCurve*, int, double); // point moved
-        void pickerMoved(QPoint);
-        void pickerAppended(QPoint);
         void configUpdate();
 
     protected:
@@ -65,14 +62,14 @@ class LTMPlot : public QwtPlot
         LTMPlotBackground *bg;
         QList <LTMPlotZoneLabel *> zoneLabels;
 
-        LTMPlotContainer *parent;
+        LTMWindow *parent;
         double minY[10], maxY[10], maxX;      // for all possible 10 curves
 
     private:
         MainWindow *main;
         QDir home;
         bool useMetricUnits;
-        struct LTMSettings *settings;
+        LTMSettings *settings;
 
         // date range selection
         int selection, seasonid;

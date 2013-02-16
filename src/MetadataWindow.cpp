@@ -19,21 +19,22 @@
 #include "MetadataWindow.h"
 
 MetadataWindow::MetadataWindow(MainWindow *mainWindow) :
-    GcWindow(mainWindow), mainWindow(mainWindow)
+    GcChartWindow(mainWindow), mainWindow(mainWindow)
 {
     setInstanceName("Metadata Window");
     setControls(NULL);
     setRideItem(NULL);
     setContentsMargins(0,0,0,0);
 
-    QVBoxLayout *vlayout = new QVBoxLayout(this);
+    QVBoxLayout *vlayout = new QVBoxLayout;
     vlayout->setSpacing(0);
     rideMetadata = new RideMetadata(mainWindow);
     QFont font;
     font.setPointSize(font.pointSize());
     rideMetadata->setFont(font);
-    rideMetadata->setContentsMargins(0,0,0,0);
+    rideMetadata->setContentsMargins(20,0,20,20);
     vlayout->addWidget(rideMetadata);
+    setChartLayout(vlayout);
 
     connect(this, SIGNAL(rideItemChanged(RideItem*)), this, SLOT(rideItemChanged()));
 }
@@ -42,4 +43,6 @@ void
 MetadataWindow::rideItemChanged()
 {
     rideMetadata->setProperty("ride", property("ride"));
+    if (myRideItem) setIsBlank(false);
+    else setIsBlank(true);
 }

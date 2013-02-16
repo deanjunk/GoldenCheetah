@@ -68,6 +68,12 @@ public:
 
     QString id() { return deviceUUID; }
 
+signals:
+    void foundDevice(QString uuid, int type);
+
+private slots:
+    void discoveredDevices(int,bool);
+
 private:
     void run();                                 // called by start to kick off the CT comtrol thread
 
@@ -84,6 +90,8 @@ private:
     volatile double slope;
 
     QString deviceUUID;
+    int sd; // sensor descriptor aka an index into the connections array
+            // mimics the fd index used by open/close syscalls.
     RealtimeData rt;
 
     void *pool;

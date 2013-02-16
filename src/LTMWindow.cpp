@@ -35,7 +35,7 @@
 #include <qwt_plot_marker.h>
 
 LTMWindow::LTMWindow(MainWindow *parent, bool useMetricUnits, const QDir &home) :
-            LTMPlotContainer(parent), home(home),
+            GcChartWindow(parent), home(home),
             useMetricUnits(useMetricUnits), dirty(true)
 {
     main = parent;
@@ -47,7 +47,35 @@ LTMWindow::LTMWindow(MainWindow *parent, bool useMetricUnits, const QDir &home) 
     QVBoxLayout *mainLayout = new QVBoxLayout;
     ltmPlot = new LTMPlot(this, main, home);
     mainLayout->addWidget(ltmPlot);
-    setLayout(mainLayout);
+    setChartLayout(mainLayout);
+
+    // reveal controls
+    QHBoxLayout *revealLayout = new QHBoxLayout;
+    revealLayout->setContentsMargins(0,0,0,0);
+    revealLayout->addStretch();
+    revealLayout->addWidget(new QLabel(tr("Group by"),this));
+
+    rGroupBy = new QxtStringSpinBox(this);
+    QStringList strings;
+    strings << "Days"
+            << "Weeks"
+            << "Months"
+            << "Years"
+            << "Time Of Day";
+    rGroupBy->setStrings(strings);
+    rGroupBy->setValue(0);
+
+    revealLayout->addWidget(rGroupBy);
+    rShade = new QCheckBox(tr("Shade zones"), this);
+    rEvents = new QCheckBox(tr("Show events"), this);
+    QVBoxLayout *checks = new QVBoxLayout;
+    checks->setSpacing(2);
+    checks->setContentsMargins(0,0,0,0);
+    checks->addWidget(rShade);
+    checks->addWidget(rEvents);
+    revealLayout->addLayout(checks);
+    revealLayout->addStretch();
+    setRevealLayout(revealLayout);
 
     // the controls
     QWidget *c = new QWidget;
@@ -99,18 +127,25 @@ LTMWindow::LTMWindow(MainWindow *parent, bool useMetricUnits, const QDir &home) 
     settings.data = NULL;
     settings.groupBy = LTM_DAY;
     settings.legend = ltmTool->showLegend->isChecked();
+    settings.events = ltmTool->showEvents->isChecked();
     settings.shadeZones = ltmTool->shadeZones->isChecked();
+    rShade->setChecked(ltmTool->shadeZones->isChecked());
+    rEvents->setChecked(ltmTool->showEvents->isChecked());
     cl->addWidget(ltmTool);
 
     connect(this, SIGNAL(dateRangeChanged(DateRange)), this, SLOT(dateRangeChanged(DateRange)));
     connect(ltmTool, SIGNAL(filterChanged()), this, SLOT(filterChanged()));
     connect(ltmTool, SIGNAL(metricSelected()), this, SLOT(metricSelected()));
     connect(ltmTool->groupBy, SIGNAL(currentIndexChanged(int)), this, SLOT(groupBySelected(int)));
+    connect(rGroupBy, SIGNAL(valueChanged(int)), this, SLOT(rGroupBySelected(int)));
     connect(ltmTool->saveButton, SIGNAL(clicked(bool)), this, SLOT(saveClicked(void)));
     connect(ltmTool->manageButton, SIGNAL(clicked(bool)), this, SLOT(manageClicked(void)));
     connect(ltmTool->presetPicker, SIGNAL(currentIndexChanged(int)), this, SLOT(chartSelected(int)));
     connect(ltmTool->shadeZones, SIGNAL(stateChanged(int)), this, SLOT(shadeZonesClicked(int)));
+    connect(rShade, SIGNAL(stateChanged(int)), this, SLOT(shadeZonesClicked(int)));
     connect(ltmTool->showLegend, SIGNAL(stateChanged(int)), this, SLOT(showLegendClicked(int)));
+    connect(ltmTool->showEvents, SIGNAL(stateChanged(int)), this, SLOT(showEventsClicked(int)));
+    connect(rEvents, SIGNAL(stateChanged(int)), this, SLOT(showEventsClicked(int)));
     connect(ltmTool, SIGNAL(useCustomRange(DateRange)), this, SLOT(useCustomRange(DateRange)));
     connect(ltmTool, SIGNAL(useThruToday()), this, SLOT(useThruToday()));
     connect(ltmTool, SIGNAL(useStandardRange()), this, SLOT(useStandardRange()));
@@ -118,13 +153,7 @@ LTMWindow::LTMWindow(MainWindow *parent, bool useMetricUnits, const QDir &home) 
     // connect pickers to ltmPlot
     connect(_canvasPicker, SIGNAL(pointHover(QwtPlotCurve*, int)), ltmPlot, SLOT(pointHover(QwtPlotCurve*, int)));
     connect(_canvasPicker, SIGNAL(pointClicked(QwtPlotCurve*, int)), ltmPlot, SLOT(pointClicked(QwtPlotCurve*, int)));
-    connect(picker, SIGNAL(moved(QPoint)), ltmPlot, SLOT(pickerMoved(QPoint)));
-    connect(picker, SIGNAL(appended(const QPoint &)), ltmPlot, SLOT(pickerAppended(const QPoint &)));
 
-    // config changes or ride file activities cause a redraw/refresh (but only if visible)
-    //connect(main, SIGNAL(rideSelected()), this, SLOT(rideSelected(void)));
-    //XXX no longer needed since we use dateRange not rideItem for LTM plots on home view
-    //XXX connect(this, SIGNAL(rideItemChanged(RideItem*)), this, SLOT(rideSelected()));
     connect(main, SIGNAL(rideAdded(RideItem*)), this, SLOT(refresh(void)));
     connect(main, SIGNAL(rideDeleted(RideItem*)), this, SLOT(refresh(void)));
     connect(main, SIGNAL(configChanged()), this, SLOT(refresh()));
@@ -132,31 +161,11 @@ LTMWindow::LTMWindow(MainWindow *parent, bool useMetricUnits, const QDir &home) 
 
 LTMWindow::~LTMWindow()
 {
-    //qDebug()<<"delete metricdb... crash!!!";
-    //if (metricDB != NULL) delete metricDB; //XXX CRASH!!!! -- needs fixing
     delete popup;
 }
 
 void
-LTMWindow::rideSelected()
-{
-#if 0
-    if (active == true) {
-
-        // mimic user first selection now that
-        // we are active - choose a chart and
-        // use the first available date range
-        ltmTool->selectDateRange(0);
-        chartSelected(0);
-    if (amVisible() == true && dirty == true) {
-
-        // plot needs to be redrawn
-        refresh();
-    } else if (amVisible() == false) {
-        popup->hide();
-    }
-#endif
-}
+LTMWindow::rideSelected() { } // deprecated
 
 void
 LTMWindow::refreshPlot()
@@ -243,12 +252,8 @@ LTMWindow::dateRangeChanged(DateRange range)
     settings.data = &results;
     settings.measures = &measures;
 
-    // apply filter to new date range too -- will refresh plot
+    // apply filter to new date range too -- will also refresh plot
     filterChanged();
-
-    //XXX not needed since filter changed will also
-    //XXX call refreshPlot();
-    //refreshPlot();
 }
 
 void
@@ -305,10 +310,20 @@ LTMWindow::filterChanged()
 }
 
 void
+LTMWindow::rGroupBySelected(int selected)
+{
+    if (selected >= 0) {
+        settings.groupBy = selected;
+        ltmTool->groupBy->setCurrentIndex(selected);
+    }
+}
+
+void
 LTMWindow::groupBySelected(int selected)
 {
     if (selected >= 0) {
         settings.groupBy = ltmTool->groupBy->itemData(selected).toInt();
+        rGroupBy->setValue(selected);
         refreshPlot();
     }
 }
@@ -316,6 +331,11 @@ LTMWindow::groupBySelected(int selected)
 void
 LTMWindow::shadeZonesClicked(int state)
 {
+    bool checked = state;
+
+    // only change if changed, to avoid endless looping
+    if (ltmTool->shadeZones->isChecked() != checked) ltmTool->shadeZones->setChecked(checked);
+    if (rShade->isChecked() != checked) rShade->setChecked(checked);
     settings.shadeZones = state;
     refreshPlot();
 }
@@ -324,6 +344,18 @@ void
 LTMWindow::showLegendClicked(int state)
 {
     settings.legend = state;
+    refreshPlot();
+}
+
+void
+LTMWindow::showEventsClicked(int state)
+{
+    bool checked = state;
+
+    // only change if changed, to avoid endless looping
+    if (ltmTool->showEvents->isChecked() != checked) ltmTool->showEvents->setChecked(checked);
+    if (rEvents->isChecked() != checked) rEvents->setChecked(checked);
+    settings.events = state;
     refreshPlot();
 }
 
