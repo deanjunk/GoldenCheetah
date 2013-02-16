@@ -296,27 +296,21 @@ void ErgFile::parseComputrainer(QString p)
     QRegExp crsformat("^[;]*(DISTANCE[ \\t]+GRADE[ \\t]+WIND).*$", Qt::CaseInsensitive);
 
     // time watts records
-    QRegExp absoluteWatts("^[ \\t]*([0-9\\.]+)[ \\t]*([0-9\\.]+)[ \\t\\n]*$", Qt::CaseInsensitive);
-    QRegExp relativeWatts("^[ \\t]*([0-9\\.]+)[ \\t]*([0-9\\.]+)%[ \\t\\n]*$", Qt::CaseInsensitive);
-
+    QRegExp absoluteWatts("^[ \\t]*([0-9\\.]+)[ \\t]*([0-9\\.]+)[ \\t\\n]*(.*)$", Qt::CaseInsensitive);
+    QRegExp relativeWatts("^[ \\t]*([0-9\\.]+)[ \\t]*([0-9\\.]+)%[ \\t\\n]*(.*)$", Qt::CaseInsensitive);
+    
     // distance slope wind records
-    QRegExp absoluteSlope("^[ \\t]*([0-9\\.]+)[ \\t]*([-0-9\\.]+)[ \\t\\n]*([-0-9\\.]+)[ \\t\\n]*$",
-                           Qt::CaseInsensitive);
-
+    QRegExp absoluteSlope("^[ \\t]*([0-9\\.]+)[ \\t]*([-0-9\\.]+)[ \\t]*([-0-9\\.]+)[ \\t\\n]*(.*)$",
+                          Qt::CaseInsensitive);
+    
     // Lap marker in an ERG/MRC file
     QRegExp lapmarker("^[ \\t]*([0-9\\.]+)[ \\t]*LAP[ \\t\\n]*(.*)$", Qt::CaseInsensitive);
     QRegExp crslapmarker("^[ \\t]*LAP[ \\t\\n]*(.*)$", Qt::CaseInsensitive);
-
-    // Message marker in ERG/MRC file
-    //QRegExp msgmarker("^(.*)MSG{1}(.*)$", Qt::CaseInsensitive);
-    QRegExp msgmarker("^([0-9\\.]+).*MSG{1}.*\"(.*)\".*$", Qt::CaseInsensitive);
-    QRegExp crsmsgmarker("^[ \\t]*MSG[ \\t\"([^\"']*)\"\\n]*(.*)$", Qt::CaseInsensitive);
     
     // ok. opened ok lets parse.
     QTextStream inputStream(&ergFile);
     QTextStream stringStream(&p);
 
-    //QMessageBox msgBox;
     if (p != "") inputStream.setString(&p); // use a string not a file!
     while ((p=="" && !inputStream.atEnd()) || (p!="" && !stringStream.atEnd())) {
 
@@ -327,7 +321,7 @@ void ErgFile::parseComputrainer(QString p)
         // otherwise, there will be nothing to split and it will read each line as expected.
         QString linesIn = (p != "" ? stringStream.readLine() : ergFile.readLine());
         QStringList lines = linesIn.split('\r');
-
+        
         // workaround for empty lines
         if(lines.isEmpty()) {
             continue;
@@ -354,47 +348,59 @@ void ErgFile::parseComputrainer(QString p)
             } else if (crsformat.exactMatch(line)) {
                 // save away the format
                 mode = format = CRS;
-            } else if (lapmarker.exactMatch(line)) {
+            } else if (lapmarker.exactMatch(line) || crslapmarker.exactMatch(line)) {
                 // lap marker found
-                ErgFileLap add;
-
-                add.x = lapmarker.cap(1).toDouble() * 60000; // from mins to 1000ths of a second
-                add.LapNum = ++lapcounter;
-                add.name = lapmarker.cap(2).simplified();
-                Laps.append(add);
-
-            } else if (crslapmarker.exactMatch(line)) {
-                // new distance lapmarker
-                ErgFileLap add;
-
-                add.x = rdist;
-                add.LapNum = ++lapcounter;
-                add.name = lapmarker.cap(2).simplified();
-                Laps.append(add);
-            } else if (msgmarker.exactMatch(line)) {
-                // msg marker found
-                ErgFileMsg add;
-                //QMessageBox msgBox;
-                //QString capture1 = "Found msgMarker [" + msgmarker.cap(1) + "] [" + msgmarker.cap(2) + "]";
-                //msgBox.setText(capture1);
-                //msgBox.setIcon(QMessageBox::Information);
-                //msgBox.exec();
-
-                add.pos = msgmarker.cap(1).toInt() * 60; // from mins to seconds
-                add.message = msgmarker.cap(2).simplified();
-                Msgs.append(add);
+                QString lapInfo;
+                QString lapName;
+                QString lapMsg;
+                //int     lapMsgDuration = 5;
                 
-            } else if (crsmsgmarker.exactMatch(line)) {
-                //msgBox.setText("Found csrMsgMarker");
-                //msgBox.setIcon(QMessageBox::Information);
-                //msgBox.exec();
-                // new distance msg marker
-                ErgFileMsg add;
+                double  dLapPosition;
+                int     iLapPosition;
                 
-                add.pos = rdist;
-                add.message = msgmarker.cap(2).simplified();
-                Msgs.append(add);
+                if (lapmarker.exactMatch(line)) {
+                    lapInfo = lapmarker.cap(2);
+                    dLapPosition = lapmarker.cap(1).toDouble() * 60000; // from mins to 1000ths of a second
+                    iLapPosition = lapmarker.cap(1).toInt () * 60;      // from mins to secs
+                } else if (crslapmarker.exactMatch(line)){
+                    lapInfo = crslapmarker.cap(2);
+                    dLapPosition = rdist;
+                    iLapPosition = crslapmarker.cap(1).toInt();
+                }
 
+                parseForMessage (lapInfo, ++lapcounter, iLapPosition, dLapPosition);
+                //Might contain a message to display
+                //QRegExp msgFormat("(.*)[;]{1}([0-9]*)(.+)$", Qt::CaseInsensitive);
+                //if (msgFormat.exactMatch (lapInfo.simplified())) {
+                //    lapName =msgFormat.cap(1).simplified();
+                //    lapMsgDuration = (msgFormat.cap(2).toInt() == 0 ? 5:msgFormat.cap(2).toInt()) ;
+                //    lapMsg = msgFormat.cap(3).simplified();
+                //} else {
+                //    lapName = lapInfo.simplified();
+                //}
+
+                //ErgFileLap addLap;
+                //addLap.x = dLapPosition;
+                //addLap.LapNum = ++lapcounter;
+                //addLap.name = lapName.simplified();
+                //Laps.append(addLap);
+            
+                //if (lapMsg.simplified().length() > 0) {
+                    //msg found
+                //    ErgFileMsg addMsg;
+                
+                //    addMsg.pos = iLapPosition; // from mins to seconds
+                //    addMsg.message = lapMsg.simplified();
+                //    addMsg.duration = lapMsgDuration;
+                //    Msgs.append(addMsg);
+                    
+                //    QMessageBox msgBox;
+                //    QString capture1 = "Found msg time[" + QString("%1").arg(iLapPosition) + "] message[" + lapMsg.simplified() + "] Duration[" + QString("%1").arg(lapMsgDuration) + "] info [" + lapInfo + "]" ;
+                //    msgBox.setText(capture1);
+                //    msgBox.setIcon(QMessageBox::Information);
+                //    msgBox.exec();
+
+                //}
             } else if (settings.exactMatch(line)) {
                 // we have name = value setting
                 QRegExp pversion("^VERSION *", Qt::CaseInsensitive);
@@ -423,71 +429,109 @@ void ErgFile::parseComputrainer(QString p)
                 QRegExp pftp("^FTP *", Qt::CaseInsensitive);
                 if (pftp.exactMatch(settings.cap(1))) Ftp = settings.cap(2).toInt();
 
-            } else if (absoluteWatts.exactMatch(line)) {
-                // we have mins watts line
+            } else if (absoluteWatts.exactMatch(line) || (relativeWatts.exactMatch(line)) || (absoluteSlope.exactMatch(line))) {
+                //double  dMsgPosition;
+                int     iMsgPosition;
+                QString msgInfo;
+                QString msg;
+                //int     msgDuration = 5;
+
                 ErgFilePoint add;
+                
+                if (absoluteSlope.exactMatch(line) && format == CRS) {
+                    msgInfo = absoluteSlope.cap(4).simplified();
+                    // distance guff
+                    add.x = rdist;
+                    int distance = absoluteSlope.cap(1).toDouble() * 1000; // convert to meters
+                    //iMsgPosition = distance;
+                    
+                    if (!bIsMetric) distance *= KM_PER_MILE;
+                    rdist += distance;
+                    iMsgPosition = distance;
 
-                add.x = absoluteWatts.cap(1).toDouble() * 60000; // from mins to 1000ths of a second
-                add.val = add.y = round(absoluteWatts.cap(2).toDouble());             // plain watts
+                    // gradient and altitude
+                    add.val = absoluteSlope.cap(2).toDouble();
+                    add.y = ralt;
+                    ralt += distance * add.val / 100;
 
-                switch (format) {
+                    QMessageBox msgBox;
+                    QString capture1 = "absslope cap1[" + absoluteSlope.cap(1) + "] cap2[" + absoluteSlope.cap(2) + "] 3[" + absoluteSlope.cap(3) + "] iMsgPos [" + QString("%1").arg(iMsgPosition) + "] line [" + line + "]" ;
+                    msgBox.setText(capture1);
+                    msgBox.setIcon(QMessageBox::Information);
+                    msgBox.exec();
 
-                case ERG:       // its an absolute wattage
-                    if (Ftp) { // adjust if target FTP is set.
-                        // if ftp is set then convert to the users CP
+                } else if (absoluteWatts.exactMatch(line) && format == ERG) {
+                    QMessageBox msgBox;
+                    QString capture1 = "abswatts cap1[" + absoluteWatts.cap(1) + "] cap2[" + absoluteWatts.cap(2) + "] 3[" + absoluteWatts.cap(3) + "] line [" + line + "]" ;
+                    msgBox.setText(capture1);
+                    msgBox.setIcon(QMessageBox::Information);
+                    msgBox.exec();
 
-                        double watts = add.y;
-                        double ftp = Ftp;
-                        watts *= CP/ftp;
-                        add.y = add.val = watts;
+                    msgInfo = absoluteWatts.cap(3).simplified();
+                    add.x = absoluteWatts.cap(1).toDouble() * 60000; // from mins to 1000ths of a second
+                    iMsgPosition = absoluteWatts.cap(1).toDouble() * 60;            // from mins to secs
+                    add.val = add.y = round(absoluteWatts.cap(2).toDouble());       // plain watts
+                    
+                    switch (format) {
+                        case ERG:       // its an absolute wattage
+                            if (Ftp) {  // adjust if target FTP is set.
+                                        // if ftp is set then convert to the users CP
+                                double watts = add.y;
+                                double ftp = Ftp;
+                                watts *= CP/ftp;
+                                add.y = add.val = watts;
+                            }
+                            break;
+                        case MRC:       // its a percent relative to CP (mrc file)
+                            add.y *= CP;
+                            add.y /= 100.00;
+                            add.val = add.y;
+                            break;
                     }
-                    break;
-                case MRC:       // its a percent relative to CP (mrc file)
-                    add.y *= CP;
-                    add.y /= 100.00;
-                    add.val = add.y;
-                    break;
+
+                } else if (relativeWatts.exactMatch(line) && format == MRC) {
+                    msgInfo = relativeWatts.cap(3).simplified();
+                    add.x = relativeWatts.cap(1).toDouble() * 60000; // from mins to 1000ths of a second
+                    add.val = add.y = (relativeWatts.cap(2).toDouble() /100.00) * CP;
+                    QMessageBox msgBox;
+                    QString capture1 = "relwatts cap1[" + relativeWatts.cap(1) + "] cap2[" + relativeWatts.cap(2) + "] 3[" + relativeWatts.cap(3) + "] line [" + line + "]" ;
+                    msgBox.setText(capture1);
+                    msgBox.setIcon(QMessageBox::Information);
+                    msgBox.exec();
+
                 }
-                Points.append(add);
-                if (add.y > MaxWatts) MaxWatts=add.y;
-
-            } else if (relativeWatts.exactMatch(line)) {
-
-                // we have a relative watts match
-                ErgFilePoint add;
-                add.x = relativeWatts.cap(1).toDouble() * 60000; // from mins to 1000ths of a second
-                add.val = add.y = (relativeWatts.cap(2).toDouble() /100.00) * CP;
-                Points.append(add);
-                if (add.y > MaxWatts) MaxWatts=add.y;
-
-            } else if (absoluteSlope.exactMatch(line)) {
-                // dist, grade, wind strength
-                ErgFilePoint add;
-
-                // distance guff
-                add.x = rdist;
-                int distance = absoluteSlope.cap(1).toDouble() * 1000; // convert to meters
-
-                if (!bIsMetric) distance *= KM_PER_MILE;
-                rdist += distance;
-
-                // gradient and altitude
-                add.val = absoluteSlope.cap(2).toDouble();
-                add.y = ralt;
-                ralt += distance * add.val / 100; /* paused */
 
                 Points.append(add);
                 if (add.y > MaxWatts) MaxWatts=add.y;
+                
+                parseForMessage (msgInfo, 0, iMsgPosition, add.x);
+                
+                //Might contain a message to display
+                //QRegExp msgFormat("[;]{1}([0-9]*)(.+)$", Qt::CaseInsensitive);
+                //if (msgFormat.exactMatch (msgInfo.simplified())) {
+                //    msgDuration = (msgFormat.cap(1).toInt() == 0 ? 5:msgFormat.cap(1).toInt());
+                //    msg = msgFormat.cap(2).simplified();
+                //}
 
-
+                //if (msg.simplified().length() > 0) {
+                    //msg found
+                //    ErgFileMsg addMsg;
+                    
+                //    addMsg.pos = iMsgPosition;
+                //    addMsg.message = msg.simplified();
+                //    addMsg.duration = msgDuration;
+                //    Msgs.append(addMsg);
+                //}
             } else if (ignore.exactMatch(line)) {
                 // do nothing for this line
             } else {
               // ignore bad lines for now. just bark.
               //qDebug()<<"huh?" << line;
-              //  msgBox.setText(line);
-              //  msgBox.setIcon(QMessageBox::Information);
-              //  msgBox.exec();
+                QMessageBox msgBox;
+
+                msgBox.setText("Unknown line type! " + line);
+                msgBox.setIcon(QMessageBox::Information);
+                msgBox.exec();
 
             }
 
@@ -532,6 +576,56 @@ void ErgFile::parseComputrainer(QString p)
         valid = false;
     }
 }
+
+void ErgFile::parseForMessage (QString msgInfo, int lapCounter, int iMsgPos, double dMsgPos) {
+ 
+    QString lapName;
+    QString msg;
+    int     msgDuration;
+    
+    if (lapCounter) {
+        // Could contain a lap name and message to display
+        QRegExp msgFormat("(.*)[;]{1}([0-9]*)(.+)$", Qt::CaseInsensitive);
+        if (msgFormat.exactMatch (msgInfo.simplified())) {
+            lapName = msgFormat.cap(1).simplified();
+            msgDuration = (msgFormat.cap(2).toInt() == 0 ? 5:msgFormat.cap(2).toInt()) ;
+            msg = msgFormat.cap(3).simplified();
+        } else {
+            lapName = msgInfo.simplified();
+        }
+
+        // Add lap marker
+        ErgFileLap addLap;
+        addLap.x = dMsgPos;
+        addLap.LapNum = lapCounter;
+        addLap.name = lapName.simplified();
+        Laps.append(addLap);
+    } else {
+        //No lap info, but might contain a message to display
+        QRegExp msgFormat("[;]{1}([0-9]*)(.+)$", Qt::CaseInsensitive);
+        if (msgFormat.exactMatch (msgInfo.simplified())) {
+            msgDuration = (msgFormat.cap(1).toInt() == 0 ? 5:msgFormat.cap(1).toInt());
+            msg = msgFormat.cap(2).simplified();
+        }
+    }
+
+    if (msg.simplified().length() > 0) {
+        //Add user defined message
+        ErgFileMsg addMsg;
+            
+        addMsg.pos = iMsgPos;
+        addMsg.message = msg.simplified();
+        addMsg.duration = msgDuration;
+        Msgs.append(addMsg);
+
+        QMessageBox msgBox;
+        QString capture1 = "Found msg time/distance[" + QString("%1").arg(iMsgPos) + "] message[" + msg.simplified() + "] Duration[" + QString("%1").arg(msgDuration) + "] info [" + msgInfo + "]" ;
+        msgBox.setText(capture1);
+        msgBox.setIcon(QMessageBox::Information);
+        msgBox.exec();
+    }
+}
+
 
 ErgFile::~ErgFile()
 {
@@ -636,11 +730,10 @@ ErgFile::gradientAt(long x, int &lapnum)
 
 ErgFileMsg ErgFile::msgAtPos(int x)
 {
-    ErgFileMsg returnMsg; //Default to return if we don't find one
-    returnMsg.pos = -999;
+    ErgFileMsg returnMsg;
+    returnMsg.pos = -100;
     
     if (isValid()) {
-        // do we need to return the Lap marker?
         if (Msgs.count() > 0) {
             for (int i=0; i < Msgs.count(); i++) {
                 if (x == Msgs.at(i).pos) {

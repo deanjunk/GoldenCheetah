@@ -58,8 +58,9 @@ class ErgFilePoint
 class ErgFileMsg
 {
     public:
-        long pos;      // when does this Msg marker occur? (time in msecs or distance in meters
+        long pos;        // when does this Msg marker occur? (time in msecs or distance in meters
         QString message; // Message to display
+        int duration;    //Duration to show the message (default 5 secs)
 };
 
 class ErgFileLap
@@ -83,6 +84,7 @@ class ErgFile
 
         void reload();          // reload after messed about
         void parseComputrainer(QString p = ""); // its an erg,crs or mrc file
+        void parseForMessage (QString, int, int, double);
         void parseTacx();         // its a pgmf file
         bool isValid();         // is the file valid or not?
         double Cp;

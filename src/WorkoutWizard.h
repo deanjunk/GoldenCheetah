@@ -99,17 +99,27 @@ public:
     WorkoutItemLap() : QTableWidgetItem(QTableWidgetItem::UserType) {
         setText("LAP");
         setFlags(flags() & (~Qt::ItemIsEditable));
+        setBackgroundColor (Qt::gray);
     }
 };
 
-class WorkoutItemMsg : public QTableWidgetItem
+class WorkoutItemRO : public QTableWidgetItem
 {
 public:
-    WorkoutItemMsg() : QTableWidgetItem(QTableWidgetItem::UserType) {
-        setText("MSG");
+    WorkoutItemRO() : QTableWidgetItem(QTableWidgetItem::UserType) {
         setFlags(flags() & (~Qt::ItemIsEditable));
+        setBackgroundColor (Qt::gray);
     }
 };
+
+//class WorkoutItemMsg : public QTableWidgetItem
+//{
+//public:
+//    WorkoutItemMsg() : QTableWidgetItem(QTableWidgetItem::UserType) {
+//        setText("MSG");
+//        setFlags(flags() & (~Qt::ItemIsEditable));
+//    }
+//};
 
 class WorkoutEditorBase : public QFrame
 {
@@ -120,7 +130,7 @@ protected:
 public slots:
     void delButtonClicked() { table->removeRow(table->currentRow()); }
     void lapButtonClicked()
-    {
+    {        
         int row = table->currentRow();
 
         if (row < table->rowCount() && row > 0) {
@@ -131,7 +141,15 @@ public slots:
 
         table->insertRow(row);
         table->setItem(row,0,new WorkoutItemLap());
-        table->setItem(row,1,new QTableWidgetItem());
+
+        if (table->columnCount() == 3) {
+            table->setItem(row, 1, new WorkoutItemRO());
+            table->setItem(row, 2, new QTableWidgetItem());
+        } else if (table->columnCount() == 4) {
+            table->setItem(row, 1, new WorkoutItemRO());
+            table->setItem(row, 2, new WorkoutItemRO());
+            table->setItem(row, 3, new QTableWidgetItem());
+        }
     }
     
     void insertButtonClicked()
@@ -143,24 +161,25 @@ public slots:
         } else if (table->rowCount() == 0) {
             row = 0;
         }
-        
+
         insertDataRow(row);
+        
     }
 
-    void msgButtonClicked()
-    {
-        int row = table->currentRow();
-        
-        if (row < table->rowCount() && row > 0) {
-            row++;
-        } else if (table->rowCount() == 0) {
-            row = 0;
-        }
-        
-        table->insertRow(row);
-        table->setItem(row,0,new WorkoutItemMsg());
-        table->setItem(row,1,new QTableWidgetItem());
-    }
+    //void msgButtonClicked()
+    //{
+    //    int row = table->currentRow();
+    //
+    //    if (row < table->rowCount() && row > 0) {
+    //        row++;
+    //    } else if (table->rowCount() == 0) {
+    //        row = 0;
+    //    }
+    //
+    //    table->insertRow(row);
+    //    table->setItem(row,0,new WorkoutItemMsg());
+    //    table->setItem(row,1,new QTableWidgetItem());
+    //}
     
     void cellChanged(int, int) { dataChanged(); }
 
@@ -171,22 +190,42 @@ signals:
 public:
     WorkoutEditorBase(QStringList &colms, QWidget *parent);
     virtual void insertDataRow(int row) =0;
-    virtual void rawData(QVector<QPair<QString, QString > > &rawData)
+    virtual void rawData(QVector<QStringList> &rawData)
     {
         int maxRow = table->rowCount();
         for(int i = 0; i < maxRow; i++)
         {
-            QTableWidgetItem *item1 = table->item(i,0);
-            QTableWidgetItem *item2 = table->item(i,1);
-            if(item1 && item2)
-            {
-                rawData.append(QPair<QString,QString>(item1->text(),item2->text()));
+            QStringList datarow;
+            QTableWidgetItem *pos = table->item(i, 0);
+            QTableWidgetItem *amt = table->item(i, 1);
+            QTableWidgetItem *msg;
+            if (table->columnCount() < 4) {
+                msg = table->item(i, 2);
+            } else {
+                msg = table->item(i, 3);
             }
+            
+            if (pos) {
+                datarow.append(QString(pos->text()));
+            } else {
+                datarow.append(QString("0"));
+            }
+            
+            if (amt)
+            {
+                datarow.append(QString(amt->text()));
+            } else {
+                datarow.append(QString("0"));
+            }
+            
+            if (msg) {
+                datarow.append(QString(msg->text()));
+            } else {
+                datarow.append(QString(" "));
+            }
+            rawData.append(datarow);
         }
-
     }
-
-
 };
 
 class WorkoutEditorAbs : public WorkoutEditorBase
@@ -210,13 +249,13 @@ public slots:
         {
             QTableWidgetItem *minItem = table->item(row,0);
             QTableWidgetItem *percentageItem = table->item(row,1);
-            if(minItem->text() == "" || minItem->text() == "LAP" || percentageItem->text() == "" || minItem->text() == "MSG") return;
+            if(minItem->text() == "" || minItem->text() == "LAP" || percentageItem->text() == "") return;
             double percentage = percentageItem->text() .toDouble();
-            WorkoutItemInt *item = new WorkoutItemInt();
+            WorkoutItemRO *item = new WorkoutItemRO();
             int wattage = (int) (percentage * ftp / 100);
             item->setData(Qt::EditRole,QVariant(QString::number(wattage)));
-            item->setFlags(item->flags() & (~Qt::ItemIsEditable));
             table->setItem(row,2,item);
+
         }
     }
 

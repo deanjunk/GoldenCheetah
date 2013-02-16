@@ -28,7 +28,6 @@
 #include "DeviceTypes.h"
 #include "ErgFile.h"
 #include "ErgFilePlot.h"
-#include "DisplayLapMsg.h"
 
 // standard stuff
 #include <QDir>
@@ -140,11 +139,11 @@ class TrainTool : public GcWindow
         void selectVideo(QString fullpath);
         void selectWorkout(QString fullpath);
     
-        //Close the messagebox and destroy the object
-        void closeMsgFromFile()
+        // Close the custom Dialog and destroy the object
+        void closeMsgDialog()
         {
-            msgFromFile->close();
-            delete msgFromFile;
+            msgDialog->close();
+            delete msgDialog;
         };
 
         //XXX void workoutTreeMenuPopup(const QPoint &);
@@ -247,8 +246,9 @@ class TrainTool : public GcWindow
                     *load_timer,    // change the load on the device
                     *disk_timer;    // write to .CSV file
     
-        QMessageBox *msgFromFile; // Display User messages from file
-        int curMsgPos;
+        QDialog *msgDialog; // Display user defined messages from workout
+        //int curMsgPos;
+        long curMsgPos;
     
     public:
         int mode;

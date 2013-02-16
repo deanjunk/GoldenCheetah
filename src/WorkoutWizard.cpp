@@ -92,11 +92,6 @@ WorkoutEditorBase::WorkoutEditorBase(QStringList &colms, QWidget *parent =0 ) :Q
     lapButton->setToolTip(tr("Add a lap"));
     row2Layout->addWidget(lapButton);
     connect(lapButton,SIGNAL(clicked()),this,SLOT(lapButtonClicked()));
-    QPushButton *msgButton = new QPushButton();
-    msgButton->setText(tr("Message"));
-    msgButton->setToolTip(tr("Add a message"));
-    connect(msgButton,SIGNAL(clicked()),this,SLOT(msgButtonClicked()));
-    row2Layout->addWidget(msgButton);
     layout->addLayout(row1Layout);
     layout->addLayout(row2Layout);
     setLayout(layout);
@@ -106,22 +101,34 @@ WorkoutEditorBase::WorkoutEditorBase(QStringList &colms, QWidget *parent =0 ) :Q
 
 void WorkoutEditorAbs::insertDataRow(int row)
 {
+    QTableWidgetItem *iMsg = new QTableWidgetItem;
+    iMsg->setText("");
+
     table->insertRow(row);
     // minutes colm can be doubles
-    table->setItem(row,0,new WorkoutItemDouble());
+    table->setItem(row, 0, new WorkoutItemDouble());
     // wattage must be integer
-    table->setItem(row,1,new WorkoutItemInt());
+    table->setItem(row, 1, new WorkoutItemInt());
+    //Message
+    table->setItem(row, 2, iMsg);
 }
 
 void WorkoutEditorRel::insertDataRow(int row)
 {
+    QTableWidgetItem *iMsg = new QTableWidgetItem;
+    iMsg->setText("");
+    
     table->insertRow(row);
     // minutes colm can be doubles
-    table->setItem(row,0,new WorkoutItemDouble());
+    table->setItem(row, 0, new WorkoutItemDouble());
     // precentage of ftp
-    table->setItem(row,1,new WorkoutItemDouble());
+    table->setItem(row, 1, new WorkoutItemDouble());
     // current ftp
-    table->setItem(row,1,new WorkoutItemInt());
+    table->setItem(row, 2, new WorkoutItemRO());
+    // Message
+    table->setItem(row, 3, iMsg);
+    table->horizontalHeader()->setStretchLastSection(true);
+    table->horizontalHeader()->setResizeMode(0, QHeaderView::Stretch);
 }
 
 template<int minGrade, int maxGrade>
@@ -142,11 +149,16 @@ public:
 
 void WorkoutEditorGradient::insertDataRow(int row)
 {
+    QTableWidgetItem *iMsg = new QTableWidgetItem;
+    iMsg->setText("");
+
     table->insertRow(row);
     // distance
-    table->setItem(row,0,new WorkoutItemDouble());
+    table->setItem(row, 0, new WorkoutItemDouble());
     // grade
-    table->setItem(row,1,new WorkoutItemDoubleRange<-5,5>());
+    table->setItem(row, 1, new WorkoutItemDoubleRange<-5,5>());
+    //Message
+    table->setItem(row, 2, iMsg);
 }
 
 ///  Workout Summary
@@ -291,23 +303,23 @@ void AbsWattagePage::initializePage()
 
 void AbsWattagePage::updateMetrics()
 {
-    QVector<QPair<QString,QString> > data;
+    QVector<QStringList> rawData;
     QwtArray<double> x;
     QwtArray<double> y;
 
-    we->rawData(data);
+    we->rawData(rawData);
 
     int curSecs = 0;
     // create rideFile
     QSharedPointer<RideFile> workout(new RideFile());
     workout->setRecIntSecs(1);
     double curMin = 0;
-    for(int i = 0; i < data.size() ; i++)
+    for (int i = 0; i < rawData.size(); i++)
     {
-        if(data[i].first == "LAP" || data[i].first == "MSG") continue;
-
-        double min = data[i].first.toDouble();
-        double watts = data[i].second.toDouble();
+        if (rawData[i][0] == "LAP") continue;
+        
+        double min = rawData[i][0].toDouble();
+        double watts = rawData[i][1].toDouble();
         int secs = min * 60;
         for(int j = 0; j < secs; j++)
         {
@@ -364,21 +376,28 @@ void AbsWattagePage::SaveWorkout()
     QTextStream stream(&f);
     // create the header
     SaveWorkoutHeader(stream,f.fileName(),description,QString("MINUTES WATTS"));
-    QVector<QPair<QString, QString> > rawData;
+    QVector<QStringList> rawData;
     we->rawData(rawData);
     double currentX = 0;
     stream << "[COURSE DATA]" << endl;
-    QPair<QString, QString > p;
-    foreach (p,rawData)
+    for (int i = 0; i < rawData.size(); i++)
     {
-        if(p.first == "LAP") {
-            stream << currentX << " LAP" << endl;
-        } else if (p.first == "MSG") {
-            stream << currentX << " MSG \"" << p.second<< "\"" << endl;
+        QString mins = rawData[i][0];
+        QString wats = rawData[i][1];
+        QString mesg = rawData[i][2];
+        
+        mesg = mesg.simplified();
+        
+        if(mins == "LAP") {
+            stream << currentX << " LAP";
+            if (mesg.length() > 0) { stream << " ;" << mesg; }
+            stream << endl;
         } else {
-            stream << currentX << " " << p.second << endl;
-            currentX += p.first.toDouble();
-            stream << currentX << " " << p.second << endl;
+            stream << currentX << " " << wats;
+            if (mesg.length() > 0) { stream << " ;" << mesg; }
+            stream << endl;
+            currentX += mins.toDouble();
+            stream << currentX << " " << wats << endl;
         }
     }
     stream << "[END COURSE DATA]" << endl;
@@ -425,22 +444,24 @@ void RelWattagePage::initializePage()
 
 void RelWattagePage::updateMetrics()
 {
-    QVector<QPair<QString,QString> > data;
+    QVector<QStringList> rawData;
     QwtArray<double> x;
     QwtArray<double> y;
 
-    we->rawData(data);
+    we->rawData(rawData);
 
     int curSecs = 0;
     // create rideFile
     QSharedPointer<RideFile> workout(new RideFile());
     workout->setRecIntSecs(1);
-    for(int i = 0; i < data.size() ; i++)
+    for (int i = 0; i < rawData.size(); i++)
     {
-        if(data[i].first == "LAP" || data[i].first == "MSG") continue;
-        double min = data[i].first.toDouble();
-        double percentFtp = data[i].second.toDouble();
-        int secs = min * 60;
+        QString smin = rawData[i][0];
+        double min   = smin.toDouble();
+        int secs     = min * 60;
+        double percentFtp = rawData[i][1].toDouble();
+
+        if (smin == "LAP") continue;
         x.append(curSecs/60);
         y.append(percentFtp);
         for(int j = 0; j < secs; j++)
@@ -495,21 +516,28 @@ void RelWattagePage::SaveWorkout()
     QTextStream stream(&f);
     // create the header
     SaveWorkoutHeader(stream,f.fileName(),description,QString("MINUTES PERCENTAGE"));
-    QVector<QPair<QString, QString> > rawData;
+    QVector<QStringList> rawData;
     we->rawData(rawData);
     double currentX = 0;
     stream << "[COURSE DATA]" << endl;
-    QPair<QString, QString > p;
-    foreach (p,rawData)
+    for (int i = 0; i < rawData.size(); i++)
     {
-        if (p.first == "LAP") {
-            stream << currentX << " LAP" << endl;
-        } else if (p.first == "MSG") {
-            stream << currentX << " MSG \"" << p.second << "\"" << endl;
+        QString mins = rawData[i][0];
+        QString perc = rawData[i][1];
+        QString mesg = rawData[i][2];
+        
+        mesg = mesg.simplified();
+        
+        if (mins == "LAP") {
+            stream << currentX << " LAP";
+            if (mesg.length() > 0) { stream << " ;" << mesg; }
+            stream << endl;
         } else {
-            stream << currentX << " " << p.second << endl;
-            currentX += p.first.toDouble();
-            stream << currentX << " " << p.second << endl;
+            stream << currentX << " " << perc;
+            if (mesg.length() > 0) { stream << " ;" << mesg; }
+            stream << endl;
+            currentX += mins.toDouble();
+            stream << currentX << " " << perc << endl;
         }
     }
     stream << "[END COURSE DATA]" << endl;
@@ -549,8 +577,8 @@ void GradientPage::initializePage()
 
 void GradientPage::updateMetrics()
 {
-    QVector<QPair<QString,QString> > data;
-    we->rawData(data);
+    QVector<QStringList> rawData;
+    we->rawData(rawData);
 
     int totalDistance = 0;
     double gain = 0;
@@ -558,11 +586,14 @@ void GradientPage::updateMetrics()
     // create rideFile
     QSharedPointer<RideFile> workout(new RideFile());
     workout->setRecIntSecs(1);
-    for(int i = 0; i < data.size() ; i++)
+    for (int i = 0; i < rawData.size(); i++)
     {
-        if(data[i].first == "LAP" || data[i].first == "MSG") continue;
-        double distance = data[i].first.toDouble();
-        double grade = data[i].second.toDouble();
+        QString dist = rawData[i][0];
+        QString grad = rawData[i][1];
+        
+        if (dist == "LAP") continue;
+        double distance = dist.toDouble();
+        double grade = grad.toDouble();
         double delta = distance  * (metricUnits ? 1000 : 5120) * grade /100;
         gain += (delta > 0) ? delta : 0;
         elevation += delta;
@@ -596,15 +627,30 @@ void GradientPage::SaveWorkout()
     QTextStream stream(&f);
     // create the header
     SaveWorkoutHeader(stream,f.fileName(),description,QString("DISTANCE GRADE WIND"));
-    QVector<QPair<QString, QString> > rawData;
+    QVector<QStringList> rawData;
     we->rawData(rawData);
     double currentX = 0;
     stream << "[COURSE DATA]" << endl;
-    QPair<QString, QString > p;
-    foreach (p,rawData)
+
+    for (int i = 0; i < rawData.size(); i++)
     {
-        currentX += p.first.toDouble();
-        stream << currentX << " " << p.second << " 0" << endl;
+        QString dist = rawData[i][0];
+        QString grad = rawData[i][1];
+        QString mesg = rawData[i][2];
+        
+        mesg = mesg.simplified();
+        
+        if (dist == "LAP") {
+            stream << currentX << " LAP 0";
+            if (mesg.length() > 0) { stream << " ;" << mesg; }
+            stream << endl;
+        } else {
+            stream << currentX << " " << grad << " 0";
+            if (mesg.length() > 0) { stream << " ;" << mesg; }
+            stream << endl;
+            currentX += dist.toDouble();
+            stream << currentX << " " << grad << " 0" << endl;
+        }
     }
     stream << "[END COURSE DATA]" << endl;
 }

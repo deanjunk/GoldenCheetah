@@ -1068,35 +1068,45 @@ void TrainTool::guiUpdate()           // refreshes the telemetry
             rtData.setMsecs(total_msecs);
             rtData.setLapMsecs(lap_msecs);
 
-            //QMessageBox mBox;
-            //QString mtext = "Before if [curMsgPos = " + QString::number(curMsgPos) + "] [total_msecs = " + QString::number(total_msecs) + "]";
-            //mBox.setText(mtext);
-            //mBox.setIcon(QMessageBox::Information);
-            //mBox.exec();
-            //int loadSeconds = load_msecs/1000;
-            
-            if ((int)load_msecs/1000 != curMsgPos) {
-                //QMessageBox mBox;
-                //QString mtext = "if [curMsgPos = " + QString::number(curMsgPos) + "] [total_secs = " + QString::number(load_msecs/1000) + "]";
-                //mBox.setText(mtext);
-                //mBox.setIcon(QMessageBox::Information);
-                //mBox.exec();
+            // round to 2 decimal places
+            double myDistance = floor(displayDistance / (double)0.01 + 0.5) * (double)0.01;
+            //QMessageBox msgBox;
+            //QString capture1 = "distance[" + QString("%1").arg(displayDistance*1000)  + "] curMsgPos [" + QString("%1").arg(curMsgPos) + "] myDistance [" + QString("%1").arg(myDistance) + "]";
+            //msgBox.setText(capture1);
+            //msgBox.setIcon(QMessageBox::Information);
+            //msgBox.exec();
+
+            // Check if there is a user defined message to display from workout file
+            if (((int)load_msecs/1000 != curMsgPos && gui_timer->isActive() && (ergFile) && mode == ERG) ||
+                (myDistance != curMsgPos && gui_timer->isActive() && mode == CRS)) {
                 ErgFileMsg msgData;
-                msgData = ergFile->msgAtPos((int)load_msecs/1000);
-            
-                if (ergFile && msgData.pos > -1 && msgData.pos != curMsgPos) {
+                if (mode == ERG) {
+                    msgData = ergFile->msgAtPos((int)load_msecs/1000);
+                } else {
+                    msgData = ergFile->msgAtPos(myDistance);
+                }
+                if (msgData.pos > -1 && msgData.pos != curMsgPos) {
                     curMsgPos = msgData.pos;
-                    msgFromFile = new QMessageBox(this);
-                    msgFromFile->setStandardButtons(QMessageBox::Ok);
-                    msgFromFile->setText(msgData.message);
-                    msgFromFile->setWindowFlags (Qt::Dialog | Qt::FramelessWindowHint);
-                    msgFromFile->show();
-                    msgFromFile->setStandardButtons(QMessageBox::NoButton);
-                    //Close QMessageBox Automatically when timer expires
-                    QTimer::singleShot(5000, this, SLOT(closeMsgFromFile()));
+                    // Create a dialog with a label to make it easier to customize the look/feel of the displayed message
+                    msgDialog = new QDialog(this);
+                    QGridLayout *msgLayout = new QGridLayout(msgDialog);
+                    QLabel *msgText = new QLabel();
+                    QFont font = msgText->font();
+                    font.setPointSize((msgData.message.length()>30 ? 25:50)); // Longer than 30 chars, reduce font size
+                    font.setBold(true);
+                    msgText->setFont(font);
+                    msgText->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
+                    msgText->setText(msgData.message);
+                    msgText->setFixedWidth(QDesktopWidget().screen()->rect().width()*.70);    // 70% of screen width
+                    msgText->setFixedHeight (QDesktopWidget().screen()->rect().height()*.25); // 25% of screen height
+                    msgLayout->addWidget(msgText, 0, 0, 1, 1);
+                    QTimer::singleShot(msgData.duration * 1000, this, SLOT(closeMsgDialog()));
+                    msgDialog->setWindowFlags (Qt::Dialog | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint);
+                    msgDialog->setStyleSheet("QLabel { border-radius: 5px; border-color: black; border-width: 2px; border-style: outset; padding-top: 2px; padding-bottom: 5px; padding-left: 5px; padding-right: 5px}");
+                    msgDialog->show();
                 }
             }
-                
+            
             long lapTimeRemaining;
             if (ergFile) lapTimeRemaining = ergFile->nextLap(load_msecs) - load_msecs;
             else lapTimeRemaining = 0;
