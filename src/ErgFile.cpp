@@ -297,7 +297,7 @@ void ErgFile::parseComputrainer(QString p)
 
     // time watts records
     QRegExp absoluteWatts("^[ \\t]*([0-9\\.]+)[ \\t]*([0-9\\.]+)[ \\t\\n]*(.*)$", Qt::CaseInsensitive);
-    QRegExp relativeWatts("^[ \\t]*([0-9\\.]+)[ \\t]*([0-9\\.]+)%[ \\t\\n]*(.*)$", Qt::CaseInsensitive);
+    QRegExp relativeWatts("^[ \\t]*([0-9\\.]+)[ \\t]*([0-9\\.]+)[%]*[ \\t\\n]*(.*)$", Qt::CaseInsensitive);
     
     // distance slope wind records
     QRegExp absoluteSlope("^[ \\t]*([0-9\\.]+)[ \\t]*([-0-9\\.]+)[ \\t]*([-0-9\\.]+)[ \\t\\n]*(.*)$",
@@ -430,12 +430,15 @@ void ErgFile::parseComputrainer(QString p)
                 if (pftp.exactMatch(settings.cap(1))) Ftp = settings.cap(2).toInt();
 
             } else if (absoluteWatts.exactMatch(line) || (relativeWatts.exactMatch(line)) || (absoluteSlope.exactMatch(line))) {
-                //double  dMsgPosition;
-                long     lMsgPosition;
                 int      iMsgPosition;
                 QString msgInfo;
                 QString msg;
                 //int     msgDuration = 5;
+                QMessageBox msgBox;
+                QString capture1 = "Before if... line [" + line + "]" ;
+                msgBox.setText(capture1);
+                msgBox.setIcon(QMessageBox::Information);
+                msgBox.exec();
 
                 ErgFilePoint add;
                 
@@ -444,26 +447,16 @@ void ErgFile::parseComputrainer(QString p)
                     // distance guff
                     add.x = rdist;
                     int distance = absoluteSlope.cap(1).toDouble() * 1000; // convert to meters
-                    lMsgPosition = absoluteSlope.cap(1).toLong() * 1000;
                     
-                    if (!bIsMetric) distance *= KM_PER_MILE;
+                    if (bIsMetric) distance *= KM_PER_MILE;
 
-                    if (!bIsMetric) lMsgPosition *= KM_PER_MILE;
-                    
-                    iMsgPosition = (int)lMsgPosition;
-                    
                     rdist += distance;
 
+                    iMsgPosition = rdist;
                     // gradient and altitude
                     add.val = absoluteSlope.cap(2).toDouble();
                     add.y = ralt;
                     ralt += distance * add.val / 100;
-
-                    QMessageBox msgBox;
-                    QString capture1 = "absslope cap1[" + absoluteSlope.cap(1) + "] cap2[" + absoluteSlope.cap(2) + "] 3[" + absoluteSlope.cap(3) + "] iMsgPosition [" + QString("%1").arg(iMsgPosition) + "] line [" + line + "]" ;
-                    msgBox.setText(capture1);
-                    msgBox.setIcon(QMessageBox::Information);
-                    msgBox.exec();
 
                 } else if (absoluteWatts.exactMatch(line) && format == ERG) {
                     QMessageBox msgBox;

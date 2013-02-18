@@ -1042,12 +1042,7 @@ void TrainTool::guiUpdate()           // refreshes the telemetry
             rtData.setLapMsecs(lap_msecs);
 
             // round to 2 decimal places
-            double myDistance = floor(displayDistance / (double)0.01 + 0.5) * (double)0.01;
-            //QMessageBox msgBox;
-            //QString capture1 = "distance[" + QString("%1").arg(displayDistance*1000)  + "] curMsgPos [" + QString("%1").arg(curMsgPos) + "] myDistance [" + QString("%1").arg(myDistance) + "]";
-            //msgBox.setText(capture1);
-            //msgBox.setIcon(QMessageBox::Information);
-            //msgBox.exec();
+            double myDistance = displayDistance * 1000;
 
             // Check if there is a user defined message to display from workout file
             if (((int)load_msecs/1000 != curMsgPos && gui_timer->isActive() && (ergFile) && mode == ERG) ||
