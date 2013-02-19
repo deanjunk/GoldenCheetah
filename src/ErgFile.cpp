@@ -369,38 +369,7 @@ void ErgFile::parseComputrainer(QString p)
                 }
 
                 parseForMessage (lapInfo, ++lapcounter, iLapPosition, dLapPosition);
-                //Might contain a message to display
-                //QRegExp msgFormat("(.*)[;]{1}([0-9]*)(.+)$", Qt::CaseInsensitive);
-                //if (msgFormat.exactMatch (lapInfo.simplified())) {
-                //    lapName =msgFormat.cap(1).simplified();
-                //    lapMsgDuration = (msgFormat.cap(2).toInt() == 0 ? 5:msgFormat.cap(2).toInt()) ;
-                //    lapMsg = msgFormat.cap(3).simplified();
-                //} else {
-                //    lapName = lapInfo.simplified();
-                //}
 
-                //ErgFileLap addLap;
-                //addLap.x = dLapPosition;
-                //addLap.LapNum = ++lapcounter;
-                //addLap.name = lapName.simplified();
-                //Laps.append(addLap);
-            
-                //if (lapMsg.simplified().length() > 0) {
-                    //msg found
-                //    ErgFileMsg addMsg;
-                
-                //    addMsg.pos = iLapPosition; // from mins to seconds
-                //    addMsg.message = lapMsg.simplified();
-                //    addMsg.duration = lapMsgDuration;
-                //    Msgs.append(addMsg);
-                    
-                //    QMessageBox msgBox;
-                //    QString capture1 = "Found msg time[" + QString("%1").arg(iLapPosition) + "] message[" + lapMsg.simplified() + "] Duration[" + QString("%1").arg(lapMsgDuration) + "] info [" + lapInfo + "]" ;
-                //    msgBox.setText(capture1);
-                //    msgBox.setIcon(QMessageBox::Information);
-                //    msgBox.exec();
-
-                //}
             } else if (settings.exactMatch(line)) {
                 // we have name = value setting
                 QRegExp pversion("^VERSION *", Qt::CaseInsensitive);
@@ -430,15 +399,9 @@ void ErgFile::parseComputrainer(QString p)
                 if (pftp.exactMatch(settings.cap(1))) Ftp = settings.cap(2).toInt();
 
             } else if (absoluteWatts.exactMatch(line) || (relativeWatts.exactMatch(line)) || (absoluteSlope.exactMatch(line))) {
-                int      iMsgPosition;
+                int     iMsgPosition;
                 QString msgInfo;
                 QString msg;
-                //int     msgDuration = 5;
-                QMessageBox msgBox;
-                QString capture1 = "Before if... line [" + line + "]" ;
-                msgBox.setText(capture1);
-                msgBox.setIcon(QMessageBox::Information);
-                msgBox.exec();
 
                 ErgFilePoint add;
                 
@@ -459,11 +422,6 @@ void ErgFile::parseComputrainer(QString p)
                     ralt += distance * add.val / 100;
 
                 } else if (absoluteWatts.exactMatch(line) && format == ERG) {
-                    QMessageBox msgBox;
-                    QString capture1 = "abswatts cap1[" + absoluteWatts.cap(1) + "] cap2[" + absoluteWatts.cap(2) + "] 3[" + absoluteWatts.cap(3) + "] line [" + line + "]" ;
-                    msgBox.setText(capture1);
-                    msgBox.setIcon(QMessageBox::Information);
-                    msgBox.exec();
 
                     msgInfo = absoluteWatts.cap(3).simplified();
                     add.x = absoluteWatts.cap(1).toDouble() * 60000; // from mins to 1000ths of a second
@@ -491,12 +449,6 @@ void ErgFile::parseComputrainer(QString p)
                     msgInfo = relativeWatts.cap(3).simplified();
                     add.x = relativeWatts.cap(1).toDouble() * 60000; // from mins to 1000ths of a second
                     add.val = add.y = (relativeWatts.cap(2).toDouble() /100.00) * CP;
-                    QMessageBox msgBox;
-                    QString capture1 = "relwatts cap1[" + relativeWatts.cap(1) + "] cap2[" + relativeWatts.cap(2) + "] 3[" + relativeWatts.cap(3) + "] line [" + line + "]" ;
-                    msgBox.setText(capture1);
-                    msgBox.setIcon(QMessageBox::Information);
-                    msgBox.exec();
-
                 }
 
                 Points.append(add);
@@ -504,33 +456,11 @@ void ErgFile::parseComputrainer(QString p)
                 
                 parseForMessage (msgInfo, 0, iMsgPosition, add.x);
                 
-                //Might contain a message to display
-                //QRegExp msgFormat("[;]{1}([0-9]*)(.+)$", Qt::CaseInsensitive);
-                //if (msgFormat.exactMatch (msgInfo.simplified())) {
-                //    msgDuration = (msgFormat.cap(1).toInt() == 0 ? 5:msgFormat.cap(1).toInt());
-                //    msg = msgFormat.cap(2).simplified();
-                //}
-
-                //if (msg.simplified().length() > 0) {
-                    //msg found
-                //    ErgFileMsg addMsg;
-                    
-                //    addMsg.pos = iMsgPosition;
-                //    addMsg.message = msg.simplified();
-                //    addMsg.duration = msgDuration;
-                //    Msgs.append(addMsg);
-                //}
             } else if (ignore.exactMatch(line)) {
                 // do nothing for this line
             } else {
               // ignore bad lines for now. just bark.
               //qDebug()<<"huh?" << line;
-                QMessageBox msgBox;
-
-                msgBox.setText("Unknown line type! " + line);
-                msgBox.setIcon(QMessageBox::Information);
-                msgBox.exec();
-
             }
 
         }
@@ -615,12 +545,6 @@ void ErgFile::parseForMessage (QString msgInfo, int lapCounter, int iMsgPos, dou
         addMsg.message = msg.simplified();
         addMsg.duration = msgDuration;
         Msgs.append(addMsg);
-
-        QMessageBox msgBox;
-        QString capture1 = "Found msg time/distance[" + QString("%1").arg(iMsgPos) + "] message[" + msg.simplified() + "] Duration[" + QString("%1").arg(msgDuration) + "] info [" + msgInfo + "]" ;
-        msgBox.setText(capture1);
-        msgBox.setIcon(QMessageBox::Information);
-        msgBox.exec();
     }
 }
 
