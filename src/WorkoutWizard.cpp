@@ -103,6 +103,7 @@ void WorkoutEditorAbs::insertDataRow(int row)
 {
     QTableWidgetItem *iMsg = new QTableWidgetItem;
     iMsg->setText("");
+    iMsg->setToolTip("SecondsToDisplay Message");
 
     table->insertRow(row);
     // minutes colm can be doubles
@@ -117,6 +118,7 @@ void WorkoutEditorRel::insertDataRow(int row)
 {
     QTableWidgetItem *iMsg = new QTableWidgetItem;
     iMsg->setText("");
+    iMsg->setToolTip("SecondsToDisplay Message");
     
     table->insertRow(row);
     // minutes colm can be doubles
@@ -151,6 +153,7 @@ void WorkoutEditorGradient::insertDataRow(int row)
 {
     QTableWidgetItem *iMsg = new QTableWidgetItem;
     iMsg->setText("");
+    iMsg->setToolTip("SecondsToDisplay Message");
 
     table->insertRow(row);
     // distance
