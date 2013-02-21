@@ -137,6 +137,7 @@ class TrainTool : public GcWindow
         {
             msgDialog->close();
             delete msgDialog;
+            delete msgTimer;
         };
 
     public slots:
@@ -233,10 +234,9 @@ class TrainTool : public GcWindow
         QTimer      *gui_timer,     // refresh the gui
                     *stream_timer,  // send telemetry to server
                     *load_timer,    // change the load on the device
-                    *disk_timer;    // write to .CSV file
-    
+                    *disk_timer,    // write to .CSV file
+                    *msgTimer;      // Time to display message
         QDialog *msgDialog; // Display user defined messages from workout
-        //int curMsgPos;
         long curMsgPos;
     
     public:

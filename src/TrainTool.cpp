@@ -832,6 +832,7 @@ void TrainTool::Stop(int deviceStatus)        // when stop button is pressed
     // wipe connection
     foreach(int dev, devices()) Devices[dev].controller->stop();
 
+    msgTimer->stop();
     gui_timer->stop();
     calibrating = false;
 
@@ -998,15 +999,20 @@ void TrainTool::guiUpdate()           // refreshes the telemetry
                     QGridLayout *msgLayout = new QGridLayout(msgDialog);
                     QLabel *msgText = new QLabel();
                     QFont font = msgText->font();
-                    font.setPointSize((msgData.message.length()>30 ? 45:60)); // Longer than 30 chars, reduce font size
+                    font.setPointSize((msgData.message.length()>30 ? 40:60)); // Longer than 30 chars, reduce font size
                     font.setBold(true);
                     msgText->setFont(font);
                     msgText->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
                     msgText->setText(msgData.message);
-                    msgText->setFixedWidth(QDesktopWidget().screen()->rect().width()*.70);    // 70% of screen width
-                    msgText->setFixedHeight (QDesktopWidget().screen()->rect().height()*.25); // 25% of screen height
+                    msgText->setFixedWidth(main->width()*.90);    // 70% of mainwindow width
+                    msgText->setFixedHeight (main->height()*.90); // 25% of mainwindow height
                     msgLayout->addWidget(msgText, 0, 0, 1, 1);
-                    QTimer::singleShot(msgData.duration * 1000, this, SLOT(closeMsgDialog()));
+                    msgTimer = new QTimer(this);
+                    msgTimer->setInterval(msgData.duration * 1000);
+                    msgTimer->setSingleShot(true);
+                    connect(msgTimer, SIGNAL(timeout()), SLOT(closeMsgDialog()));
+                    msgTimer->start();
+                    //QTimer::singleShot(msgData.duration * 1000, this, SLOT(closeMsgDialog()));
                     msgDialog->setAttribute(Qt::WA_DeleteOnClose);
                     msgDialog->setAttribute(Qt::WA_TranslucentBackground);
                     msgDialog->setAttribute(Qt::WA_NoSystemBackground);
