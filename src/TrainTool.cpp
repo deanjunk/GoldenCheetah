@@ -525,7 +525,9 @@ TrainTool::workoutTreeWidgetSelectionChanged()
     QModelIndex current = workoutTree->currentIndex();
     QModelIndex target = sortModel->mapToSource(current);
     QString filename = workoutModel->data(workoutModel->index(target.row(), 0), Qt::DisplayRole).toString();
-
+    curMsgPos = -1;
+    displayDistance = displaySpeed = 0;
+    
     // wip away the current selected workout
     if (ergFile) {
         delete ergFile;
@@ -667,7 +669,6 @@ void TrainTool::Start()       // when start button is pressed
     static QIcon pauseIcon(":images/oxygen/pause.png");
 
     if (status&RT_PAUSED) {
-
         // UN PAUSE!
         play->setIcon(pauseIcon);
 
@@ -687,22 +688,8 @@ void TrainTool::Start()       // when start button is pressed
 
         // tell the world
         main->notifyUnPause();
-
-    	//QSize mSize = .sizeHint(); 
-    	//QRect screenRect = QDesktopWidget().screen()->rect();
-    	//LapMsg.move( QPoint( screenRect.width()/2 - mSize.width()/2, screenRect.height()/2 - mSize.height()/2 ) );
-
-        //msgFromFile = new QMessageBox(this);
-        //msgFromFile->setStandardButtons(QMessageBox::Ok);
-        //msgFromFile->setText("This MessageBox Closes After 5 Seconds");
-        //msgFromFile->setWindowFlags (Qt::Dialog | Qt::FramelessWindowHint);
-        //msgFromFile->show();
-        //msgFromFile->setStandardButtons(QMessageBox::NoButton);
-        //Close QMessageBox Automatically when timer expires
-        //QTimer::singleShot(5000, this, SLOT(closeMsgFromFile()));
 		
     } else if (status&RT_RUNNING) {
-
         // Pause!
         play->setIcon(playIcon);
 
@@ -725,7 +712,7 @@ void TrainTool::Start()       // when start button is pressed
         main->notifyPause();
 
     } else {
-
+        
         // Stop users from selecting different devices
         // media or workouts whilst a workout is in progress
 
@@ -754,7 +741,6 @@ void TrainTool::Start()       // when start button is pressed
 
         load = 0;
         slope = 0.0;
-        curMsgPos = -1;
 
         if (mode == ERG || mode == MRC) {
             status |= RT_MODE_ERGO;
@@ -782,6 +768,9 @@ void TrainTool::Start()       // when start button is pressed
         session_elapsed_msec = 0;
         lap_time.start();
         lap_elapsed_msec = 0;
+        curMsgPos = -1;
+        displayDistance = displaySpeed = load_msecs = 0;
+        
         calibrating = false;
 
         if (status & RT_WORKOUT) {
@@ -892,7 +881,6 @@ void TrainTool::Stop(int deviceStatus)        // when stop button is pressed
 
     load = 0;
     slope = 0.0;
-
     QDateTime now = QDateTime::currentDateTime();
 
     if (status & RT_RECORDING) {
@@ -922,7 +910,6 @@ void TrainTool::Stop(int deviceStatus)        // when stop button is pressed
 
     if (status & RT_WORKOUT) {
         load_timer->stop();
-        load_msecs = 0;
     }
 
     // get back to normal after it may have been adusted by the user
@@ -949,8 +936,9 @@ void TrainTool::Stop(int deviceStatus)        // when stop button is pressed
     session_elapsed_msec = 0;
     session_time.restart();
     lap_elapsed_msec = 0;
+    curMsgPos = -1;
     lap_time.restart();
-    displayWorkoutDistance = displayDistance = 0;
+    displayWorkoutDistance = displayDistance = displaySpeed = load_msecs = 0;
     guiUpdate();
 
     return;
@@ -1041,18 +1029,19 @@ void TrainTool::guiUpdate()           // refreshes the telemetry
             rtData.setMsecs(total_msecs);
             rtData.setLapMsecs(lap_msecs);
 
-            // round to 2 decimal places
             double myDistance = displayDistance * 1000;
 
             // Check if there is a user defined message to display from workout file
-            if (((int)load_msecs/1000 != curMsgPos && gui_timer->isActive() && (ergFile) && mode == ERG) ||
+            if (((int)load_msecs/1000 != curMsgPos && (ergFile) && mode == ERG) ||
                 (myDistance != curMsgPos && gui_timer->isActive() && mode == CRS)) {
+                
                 ErgFileMsg msgData;
                 if (mode == ERG) {
                     msgData = ergFile->msgAtPos((int)load_msecs/1000);
                 } else {
                     msgData = ergFile->msgAtPos(myDistance);
                 }
+                
                 if (msgData.pos > -1 && msgData.pos != curMsgPos) {
                     curMsgPos = msgData.pos;
                     // Create a dialog with a label to make it easier to customize the look/feel of the displayed message
@@ -1060,7 +1049,7 @@ void TrainTool::guiUpdate()           // refreshes the telemetry
                     QGridLayout *msgLayout = new QGridLayout(msgDialog);
                     QLabel *msgText = new QLabel();
                     QFont font = msgText->font();
-                    font.setPointSize((msgData.message.length()>30 ? 25:50)); // Longer than 30 chars, reduce font size
+                    font.setPointSize((msgData.message.length()>30 ? 45:60)); // Longer than 30 chars, reduce font size
                     font.setBold(true);
                     msgText->setFont(font);
                     msgText->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
@@ -1069,8 +1058,11 @@ void TrainTool::guiUpdate()           // refreshes the telemetry
                     msgText->setFixedHeight (QDesktopWidget().screen()->rect().height()*.25); // 25% of screen height
                     msgLayout->addWidget(msgText, 0, 0, 1, 1);
                     QTimer::singleShot(msgData.duration * 1000, this, SLOT(closeMsgDialog()));
+                    msgDialog->setAttribute(Qt::WA_DeleteOnClose);
+                    msgDialog->setAttribute(Qt::WA_TranslucentBackground);
+                    msgDialog->setAttribute(Qt::WA_NoSystemBackground);
                     msgDialog->setWindowFlags (Qt::Dialog | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint);
-                    msgDialog->setStyleSheet("QLabel { border-radius: 5px; border-color: black; border-width: 2px; border-style: outset; padding-top: 2px; padding-bottom: 5px; padding-left: 5px; padding-right: 5px}");
+                    msgDialog->setStyleSheet("QLabel { color: rgba(255,255,255,255); background-color: rgba(255,255,255,0); font: bold}");
                     msgDialog->show();
                 }
             }

@@ -93,6 +93,7 @@ void ErgFile::parseTacx()
     format = CRS; // default to couse until we know
     Points.clear();
     Laps.clear();
+    Msgs.clear();
 
     // running totals
     double rdist = 0; // running total for distance
@@ -267,6 +268,8 @@ void ErgFile::parseComputrainer(QString p)
     int lapcounter = 0;
     format = ERG;                         // either ERG or MRC
     Points.clear();
+    Laps.clear();
+    Msgs.clear();
 
     // start by assuming the input file is Metric
     bool bIsMetric = true;
