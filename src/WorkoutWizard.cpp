@@ -103,7 +103,7 @@ void WorkoutEditorAbs::insertDataRow(int row)
 {
     QTableWidgetItem *iMsg = new QTableWidgetItem;
     iMsg->setText("");
-    iMsg->setToolTip("SecondsToDisplay Message");
+    iMsg->setToolTip(tr("[Seconds To Display] [Message]"));
 
     table->insertRow(row);
     // minutes colm can be doubles
@@ -118,7 +118,7 @@ void WorkoutEditorRel::insertDataRow(int row)
 {
     QTableWidgetItem *iMsg = new QTableWidgetItem;
     iMsg->setText("");
-    iMsg->setToolTip("SecondsToDisplay Message");
+    iMsg->setToolTip(tr("[Seconds To Display] [Message]"));
     
     table->insertRow(row);
     // minutes colm can be doubles
@@ -153,7 +153,7 @@ void WorkoutEditorGradient::insertDataRow(int row)
 {
     QTableWidgetItem *iMsg = new QTableWidgetItem;
     iMsg->setText("");
-    iMsg->setToolTip("SecondsToDisplay Message");
+    iMsg->setToolTip(tr("[Seconds To Display] [Message]"));
 
     table->insertRow(row);
     // distance
@@ -554,7 +554,7 @@ void GradientPage::initializePage()
     metricUnits = hackMW->useMetricUnits;
     setTitle("Workout Wizard");
 
-    setSubTitle("Manually crate a workout based on gradient (slope) and distance, maxium grade is 5.");
+    setSubTitle("Manually create a workout based on gradient (slope) and distance, maxium grade is 5.");
 
     QHBoxLayout *layout = new QHBoxLayout();
     setLayout(layout);
