@@ -112,15 +112,6 @@ public:
     }
 };
 
-//class WorkoutItemMsg : public QTableWidgetItem
-//{
-//public:
-//    WorkoutItemMsg() : QTableWidgetItem(QTableWidgetItem::UserType) {
-//        setText("MSG");
-//        setFlags(flags() & (~Qt::ItemIsEditable));
-//    }
-//};
-
 class WorkoutEditorBase : public QFrame
 {
     Q_OBJECT
@@ -165,21 +156,6 @@ public slots:
         insertDataRow(row);
         
     }
-
-    //void msgButtonClicked()
-    //{
-    //    int row = table->currentRow();
-    //
-    //    if (row < table->rowCount() && row > 0) {
-    //        row++;
-    //    } else if (table->rowCount() == 0) {
-    //        row = 0;
-    //    }
-    //
-    //    table->insertRow(row);
-    //    table->setItem(row,0,new WorkoutItemMsg());
-    //    table->setItem(row,1,new QTableWidgetItem());
-    //}
     
     void cellChanged(int, int) { dataChanged(); }
 
