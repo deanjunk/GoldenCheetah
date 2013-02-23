@@ -414,7 +414,7 @@ void ErgFile::parseComputrainer(QString p)
                     add.x = rdist;
                     int distance = absoluteSlope.cap(1).toDouble() * 1000; // convert to meters
                     
-                    if (bIsMetric) distance *= KM_PER_MILE;
+                    if (!bIsMetric) distance *= KM_PER_MILE;
 
                     rdist += distance;
 

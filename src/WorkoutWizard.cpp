@@ -377,7 +377,7 @@ void AbsWattagePage::SaveWorkout()
     f.open(QIODevice::WriteOnly | QIODevice::Text);
     QTextStream stream(&f);
     // create the header
-    SaveWorkoutHeader(stream,f.fileName(),description,QString("MINUTES WATTS"));
+    SaveWorkoutHeader(stream,f.fileName(),description,QString("MINUTES WATTS"), 0);
     QVector<QStringList> rawData;
     we->rawData(rawData);
     double currentX = 0;
@@ -516,7 +516,7 @@ void RelWattagePage::SaveWorkout()
     f.open(QIODevice::WriteOnly | QIODevice::Text);
     QTextStream stream(&f);
     // create the header
-    SaveWorkoutHeader(stream,f.fileName(),description,QString("MINUTES PERCENTAGE"));
+    SaveWorkoutHeader(stream,f.fileName(),description,QString("MINUTES PERCENTAGE"), 0);
     QVector<QStringList> rawData;
     we->rawData(rawData);
     double currentX = 0;
@@ -626,7 +626,7 @@ void GradientPage::SaveWorkout()
     f.open(QIODevice::WriteOnly | QIODevice::Text);
     QTextStream stream(&f);
     // create the header
-    SaveWorkoutHeader(stream,f.fileName(),description,QString("DISTANCE GRADE WIND"));
+    SaveWorkoutHeader(stream,f.fileName(),description,QString("DISTANCE GRADE WIND"), metricUnits);
     QVector<QStringList> rawData;
     we->rawData(rawData);
     double currentX = 0;
@@ -790,7 +790,7 @@ void ImportPage::SaveWorkout()
     f.open(QIODevice::WriteOnly | QIODevice::Text);
     QTextStream stream(&f);
     // create the header
-    SaveWorkoutHeader(stream,f.fileName(),description,QString("DISTANCE GRADE WIND"));
+    SaveWorkoutHeader(stream,f.fileName(),description,QString("DISTANCE GRADE WIND"), metricUnits);
     stream << "[COURSE DATA]" << endl;
     QPair<double,double> p;
     double prevDistance = 0;

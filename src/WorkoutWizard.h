@@ -274,14 +274,14 @@ class WorkoutPage : public QWizardPage
 public:
     WorkoutPage(QWidget *parent) : QWizardPage(parent) {}
     virtual void SaveWorkout() = 0;
-    void SaveWorkoutHeader(QTextStream &stream, QString fileName, QString description, QString units)
+    void SaveWorkoutHeader(QTextStream &stream, QString fileName, QString description, QString colNames, bool isMetric)
     {
         stream << "[COURSE HEADER]" << endl;
         stream << "VERSION = 2" << endl;
-        stream << "UNITS = METRIC" << endl;
+        stream << "UNITS = " << (isMetric ? "METRIC":"ENGLISH") << endl;
         stream << "DESCRIPTION = " << description << endl;
         stream << "FILE NAME = " << fileName << endl;
-        stream <<  units << endl;
+        stream <<  colNames << endl;
         stream << "[END COURSE HEADER]" << endl;
     }
 

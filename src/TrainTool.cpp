@@ -332,6 +332,7 @@ TrainTool::TrainTool(MainWindow *parent, const QDir &home) : GcWindow(parent), h
 
     // now the GUI is setup lets sort our control variables
     gui_timer = new QTimer(this);
+    msgTimer = new QTimer(this);
     disk_timer = new QTimer(this);
     stream_timer = new QTimer(this);
     load_timer = new QTimer(this);
@@ -831,8 +832,12 @@ void TrainTool::Stop(int deviceStatus)        // when stop button is pressed
 
     // wipe connection
     foreach(int dev, devices()) Devices[dev].controller->stop();
-
-    msgTimer->stop();
+    
+    // Expire the msgTimer if still active
+    if (msgTimer->isActive()) {
+        msgTimer->setInterval(0);
+    }
+        
     gui_timer->stop();
     calibrating = false;
 
@@ -982,8 +987,8 @@ void TrainTool::guiUpdate()           // refreshes the telemetry
             double myDistance = displayDistance * 1000;
 
             // Check if there is a user defined message to display from workout file
-            if (((int)load_msecs/1000 != curMsgPos && (ergFile) && mode == ERG) ||
-                (myDistance != curMsgPos && gui_timer->isActive() && mode == CRS)) {
+            if ((((int)load_msecs/1000 != curMsgPos && (ergFile) && mode == ERG) ||
+                (myDistance != curMsgPos && mode == CRS)) && gui_timer->isActive()){
                 
                 ErgFileMsg msgData;
                 if (mode == ERG) {
@@ -992,7 +997,8 @@ void TrainTool::guiUpdate()           // refreshes the telemetry
                     msgData = ergFile->msgAtPos(myDistance);
                 }
                 
-                if (msgData.pos > -1 && msgData.pos != curMsgPos) {
+                //Skip the message if we are already displaying a message
+                if (msgData.pos > -1 && msgData.pos != curMsgPos && !msgTimer->isActive()) {
                     curMsgPos = msgData.pos;
                     // Create a dialog with a label to make it easier to customize the look/feel of the displayed message
                     msgDialog = new QDialog(this);
@@ -1004,15 +1010,13 @@ void TrainTool::guiUpdate()           // refreshes the telemetry
                     msgText->setFont(font);
                     msgText->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
                     msgText->setText(msgData.message);
-                    msgText->setFixedWidth(main->width()*.90);    // 70% of mainwindow width
-                    msgText->setFixedHeight (main->height()*.90); // 25% of mainwindow height
+                    msgText->setFixedWidth(main->width()*.90);    // 90% of mainwindow width
+                    msgText->setFixedHeight (main->height()*.90); // 90% of mainwindow height
                     msgLayout->addWidget(msgText, 0, 0, 1, 1);
-                    msgTimer = new QTimer(this);
                     msgTimer->setInterval(msgData.duration * 1000);
                     msgTimer->setSingleShot(true);
                     connect(msgTimer, SIGNAL(timeout()), SLOT(closeMsgDialog()));
                     msgTimer->start();
-                    //QTimer::singleShot(msgData.duration * 1000, this, SLOT(closeMsgDialog()));
                     msgDialog->setAttribute(Qt::WA_DeleteOnClose);
                     msgDialog->setAttribute(Qt::WA_TranslucentBackground);
                     msgDialog->setAttribute(Qt::WA_NoSystemBackground);

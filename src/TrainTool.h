@@ -136,8 +136,6 @@ class TrainTool : public GcWindow
         void closeMsgDialog()
         {
             msgDialog->close();
-            delete msgDialog;
-            delete msgTimer;
         };
 
     public slots:
