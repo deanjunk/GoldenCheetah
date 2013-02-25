@@ -975,6 +975,8 @@ void TrainTool::guiUpdate()           // refreshes the telemetry
             // Distance assumes current speed for the last second. from km/h to km/sec
             displayDistance += displaySpeed / (5 * 3600); // assumes 200ms refreshrate
             displayWorkoutDistance += displaySpeed / (5 * 3600); // assumes 200ms refreshrate
+        
+            //double myDistance = (useMetricUnits ? displayDistance : displayDistance * MILES_PER_KM);
             rtData.setDistance(displayDistance);
 
             // time
