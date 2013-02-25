@@ -377,7 +377,7 @@ void AbsWattagePage::SaveWorkout()
     f.open(QIODevice::WriteOnly | QIODevice::Text);
     QTextStream stream(&f);
     // create the header
-    SaveWorkoutHeader(stream,f.fileName(),description,QString("MINUTES WATTS"), 0);
+    SaveWorkoutHeader(stream,f.fileName(),description,QString("MINUTES WATTS"));
     QVector<QStringList> rawData;
     we->rawData(rawData);
     double currentX = 0;
@@ -516,7 +516,7 @@ void RelWattagePage::SaveWorkout()
     f.open(QIODevice::WriteOnly | QIODevice::Text);
     QTextStream stream(&f);
     // create the header
-    SaveWorkoutHeader(stream,f.fileName(),description,QString("MINUTES PERCENTAGE"), 0);
+    SaveWorkoutHeader(stream,f.fileName(),description,QString("MINUTES PERCENTAGE"));
     QVector<QStringList> rawData;
     we->rawData(rawData);
     double currentX = 0;

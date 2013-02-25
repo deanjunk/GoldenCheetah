@@ -274,6 +274,15 @@ class WorkoutPage : public QWizardPage
 public:
     WorkoutPage(QWidget *parent) : QWizardPage(parent) {}
     virtual void SaveWorkout() = 0;
+    void SaveWorkoutHeader(QTextStream &stream, QString fileName, QString description, QString colNames)
+    {
+        // Only the gradient/slope needs to use units because of distance.
+        //Default metric for all others.
+        
+        bool isMetric = 1;
+        SaveWorkoutHeader(stream, fileName, description, colNames, isMetric);
+    }
+    
     void SaveWorkoutHeader(QTextStream &stream, QString fileName, QString description, QString colNames, bool isMetric)
     {
         stream << "[COURSE HEADER]" << endl;
