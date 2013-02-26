@@ -112,9 +112,11 @@ GcSubSplitter::createHandle()
         if(_item != 0) {
             _item->splitterHandle = new GcSplitterHandle(_item->title, _item, orientation(), this);
             _item->splitterHandle->addActions(_item->actions());
-            QAction *action = new QAction(_item->icon, _item->title, this);
-            control->addAction(action);
-            connect(action, SIGNAL(triggered(void)), _item, SLOT(selectHandle(void)));
+            _item->controlAction = new QAction(_item->icon, _item->title, this);
+            _item->controlAction->setStatusTip(_item->title);
+            control->addAction(_item->controlAction);
+
+            connect(_item->controlAction, SIGNAL(triggered(void)), _item, SLOT(selectHandle(void)));
             return _item->splitterHandle;
         }
     }
@@ -155,7 +157,12 @@ GcSplitterHandle::GcSplitterHandle(QString title, GcSplitterItem *widget, Qt::Or
     titleLayout->addStretch();
 
     titleToolbar = new QToolBar(this);
+#ifndef Q_OS_MAC
+    titleToolbar->setFixedHeight(20);
+#else
     titleToolbar->setFixedHeight(10);
+#endif
+    titleToolbar->setIconSize(QSize(8,8));
     titleToolbar->setToolButtonStyle(Qt::ToolButtonIconOnly);
 
     titleLayout->addWidget(titleToolbar);
@@ -204,7 +211,7 @@ GcSplitterHandle::paintBackground(QPaintEvent *)
 
     // background light gray for now?
     QRect all(0,0,width(),height());
-    painter.drawTiledPixmap(all, state ? active : inactive);
+    painter.drawTiledPixmap(all, isActiveWindow() ? active : inactive);
 }
 
 void
@@ -237,26 +244,14 @@ GcSplitterHandle::showHideClicked()
     setExpanded(state);
 }
 
-GcSplitterControl::GcSplitterControl(QWidget *parent) : QWidget(parent)
+GcSplitterControl::GcSplitterControl(QWidget *parent) : QToolBar(parent)
 {
     setContentsMargins(0,0,0,0);
-    setFixedHeight(24);
+    setFixedHeight(25);
+    setIconSize(QSize(18,18));
+    setToolButtonStyle(Qt::ToolButtonIconOnly);
+    setAutoFillBackground(false);
 
-    titleLayout = new QHBoxLayout(this);
-    titleLayout->setContentsMargins(0,0,0,0);
-
-    titleToolbar = new QToolBar(this);
-    titleToolbar->setFixedHeight(16);
-    titleToolbar->setToolButtonStyle(Qt::ToolButtonIconOnly);
-
-    titleLayout->addWidget(titleToolbar);
-    titleLayout->addStretch();
-}
-
-void
-GcSplitterControl::addAction(QAction *action)
-{
-    titleToolbar->addAction(action);
 }
 
 void
@@ -264,26 +259,29 @@ GcSplitterControl::paintEvent(QPaintEvent *event)
 {
     // paint the darn thing!
     paintBackground(event);
-    QWidget::paintEvent(event);
+    //QToolBar::paintEvent(event);
 }
 
 void
 GcSplitterControl::paintBackground(QPaintEvent *)
 {
     static QPixmap active = QPixmap(":images/mac/scope-active.png");
+    static QPixmap inactive = QPixmap(":images/scope-inactive.png");
 
     // setup a painter and the area to paint
     QPainter painter(this);
 
     // background light gray for now?
     QRect all(0,0,width(),height());
-    painter.drawTiledPixmap(all, active);
+    painter.drawTiledPixmap(all, isActiveWindow() ? active : inactive);
 }
 
 void
 GcSplitterControl::selectAction()
 {
     this->setVisible(!this->isVisible());
+
+
     /*this->setBaseSize(width(), parentWidget()->height());
     this->setMaximumSize(QWIDGETSIZE_MAX,QWIDGETSIZE_MAX);*/
 }
@@ -311,6 +309,7 @@ void
 GcSplitterItem::selectHandle()
 {
     this->setVisible(!this->isVisible());
+    controlAction->setChecked(this->isVisible());
     /*this->setBaseSize(width(), parentWidget()->height());
     this->setMaximumSize(QWIDGETSIZE_MAX,QWIDGETSIZE_MAX);*/
 }
