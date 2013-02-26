@@ -57,7 +57,7 @@ LTMSidebar::LTMSidebar(MainWindow *parent, const QDir &home) : QWidget(parent), 
     QAction *removeSeasonAct = new QAction(QIcon(QPixmap(":images/sidebar/minus.png")), tr("-"), this);
     seasonsWidget->addAction(removeSeasonAct);
     connect(removeSeasonAct, SIGNAL(triggered(void)), this, SLOT(deleteRange(void)));
-    QAction *moreSeasonAct = new QAction(tr(">>"), this);
+    QAction *moreSeasonAct = new QAction(QIcon(QPixmap(":images/sidebar/extra.png")), tr(">"), this);
     seasonsWidget->addAction(moreSeasonAct);
     connect(moreSeasonAct, SIGNAL(triggered(void)), this, SLOT(dateRangePopup(void)));
 
@@ -119,7 +119,6 @@ LTMSidebar::LTMSidebar(MainWindow *parent, const QDir &home) : QWidget(parent), 
     splitter = new GcSplitter(Qt::Vertical);
     splitter->addWidget(seasonsWidget);
     splitter->addWidget(eventsWidget);
-    //splitter->setStyleSheet(" QSplitter::handle { background-color: white; color: white; }");
     connect(splitter,SIGNAL(splitterMoved(int,int)), this, SLOT(splitterMoved(int,int)));
 
     GcSplitterItem *summaryWidget = new GcSplitterItem(tr("Summary"), QIcon(QPixmap(":images/sidebar/dashboard.png")), this);
