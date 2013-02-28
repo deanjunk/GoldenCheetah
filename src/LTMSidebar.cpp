@@ -41,9 +41,6 @@
 
 LTMSidebar::LTMSidebar(MainWindow *parent, const QDir &home) : QWidget(parent), home(home), main(parent), active(false)
 {
-    setStyleSheet("QFrame { FrameStyle = QFrame::NoFrame };"
-                  "QWidget { background = Qt::white; border:0 px; margin: 2px; };");
-
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
     mainLayout->setContentsMargins(0,0,0,0);
     mainLayout->setSpacing(0);
@@ -51,13 +48,13 @@ LTMSidebar::LTMSidebar(MainWindow *parent, const QDir &home) : QWidget(parent), 
 
     seasonsWidget = new GcSplitterItem(tr("Date Ranges"), QIcon(QPixmap(":images/sidebar/calendar.png")), this);
 
-    QAction *addSeasonAct = new QAction(QIcon(QPixmap(":images/sidebar/plus.png")), tr("+"), this);
+    QAction *addSeasonAct = new QAction(QIcon(QPixmap(":images/sidebar/plus.png")), tr("Add Date Range"), this);
     seasonsWidget->addAction(addSeasonAct);
     connect(addSeasonAct, SIGNAL(triggered(void)), this, SLOT(addRange(void)));
-    QAction *removeSeasonAct = new QAction(QIcon(QPixmap(":images/sidebar/minus.png")), tr("-"), this);
+    QAction *removeSeasonAct = new QAction(QIcon(QPixmap(":images/sidebar/minus.png")), tr("Delete Date Range"), this);
     seasonsWidget->addAction(removeSeasonAct);
     connect(removeSeasonAct, SIGNAL(triggered(void)), this, SLOT(deleteRange(void)));
-    QAction *moreSeasonAct = new QAction(QIcon(QPixmap(":images/sidebar/extra.png")), tr(">"), this);
+    QAction *moreSeasonAct = new QAction(QIcon(QPixmap(":images/sidebar/extra.png")), tr("Menu"), this);
     seasonsWidget->addAction(moreSeasonAct);
     connect(moreSeasonAct, SIGNAL(triggered(void)), this, SLOT(dateRangePopup(void)));
 
@@ -82,14 +79,15 @@ LTMSidebar::LTMSidebar(MainWindow *parent, const QDir &home) : QWidget(parent), 
 
     eventsWidget = new GcSplitterItem(tr("Events"), QIcon(QPixmap(":images/sidebar/bookmark.png")), this);
 
-    QAction *addEventAct = new QAction(QIcon(QPixmap(":images/sidebar/plus.png")), tr("+"), this);
+    QAction *addEventAct = new QAction(QIcon(QPixmap(":images/sidebar/plus.png")), tr("Add Event"), this);
     eventsWidget->addAction(addEventAct);
-    QAction *removeEventAct = new QAction(QIcon(QPixmap(":images/sidebar/minus.png")), tr("-"), this);
+    connect(addEventAct, SIGNAL(triggered(void)), this, SLOT(addEvent(void)));
+    QAction *removeEventAct = new QAction(QIcon(QPixmap(":images/sidebar/minus.png")), tr("Delete Event"), this);
     eventsWidget->addAction(removeEventAct);
-    QAction *moreEventAct = new QAction(tr(">>"), this);
-    eventsWidget->addAction(moreSeasonAct);
+    connect(removeEventAct, SIGNAL(triggered(void)), this, SLOT(deleteEvent(void)));
+    QAction *moreEventAct = new QAction(QIcon(QPixmap(":images/sidebar/extra.png")), tr("Menu"), this);
+    eventsWidget->addAction(moreEventAct);
     connect(moreEventAct, SIGNAL(triggered(void)), this, SLOT(eventPopup(void)));
-
 
 
     eventTree = new QTreeWidget;
@@ -143,11 +141,6 @@ LTMSidebar::LTMSidebar(MainWindow *parent, const QDir &home) : QWidget(parent), 
     if (splitterSizes != QVariant()) {
         splitter->restoreState(splitterSizes.toByteArray());
         splitter->setOpaqueResize(true); // redraw when released, snappier UI
-    } else {
-        QList<int> sizes;
-        sizes.append(400);
-        sizes.append(400);
-        splitter->setSizes(sizes);
     }
 
     // our date ranges
@@ -355,7 +348,8 @@ LTMSidebar::dateRangePopup()
         connect(event, SIGNAL(triggered(void)), this, SLOT(addEvent(void)));
     }
     // execute the menu
-    menu.exec(dateRangeTree->mapToGlobal(QPoint(dateRangeTree->pos().x()+dateRangeTree->width()-30,seasonsWidget->pos().y()-30)));
+    menu.exec(splitter->mapToGlobal(QPoint(seasonsWidget->pos().x()+seasonsWidget->width()-20,
+                                           seasonsWidget->pos().y())));
 }
 
 void
@@ -424,7 +418,8 @@ LTMSidebar::eventPopup()
     connect(addEvent, SIGNAL(triggered(void)), this, SLOT(addEvent(void)));
 
     // execute the menu
-    menu.exec(eventTree->mapToGlobal(QPoint(eventTree->pos().x()+eventTree->width()-30,eventTree->pos().y()-30)));
+    menu.exec(splitter->mapToGlobal(QPoint(eventsWidget->pos().x()+eventsWidget->width()-20,
+                                           eventsWidget->pos().y())));
 }
 
 void

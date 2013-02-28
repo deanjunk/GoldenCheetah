@@ -38,6 +38,7 @@ public:
     void insertWidget(int index, QWidget *widget);
 
     void setOpaqueResize(bool opaque = true);
+    QList<int> sizes() const;
     void setSizes(const QList<int> &list);
 
     QByteArray saveState() const;
@@ -79,6 +80,8 @@ class GcSplitterHandle : public QSplitterHandle
 {
     Q_OBJECT
 
+    friend class ::GcSplitterItem;
+
 public:
     GcSplitterHandle(QString title, GcSplitterItem *widget, Qt::Orientation orientation, GcSubSplitter *parent = 0);
 
@@ -86,8 +89,11 @@ public:
     GcSubSplitter *splitter() const;
     void addAction(QAction *action);
     void addActions(QList<QAction*> actions);
+
 protected:
     void paintEvent(QPaintEvent *);
+    GcSubSplitter *gcSplitter;
+    int index;
 
 public slots:
     void showHideClicked();
@@ -97,7 +103,6 @@ public slots:
 private:
     void paintBackground(QPaintEvent *);
 
-     GcSubSplitter *gcSplitter;
      GcSplitterItem *widget;
 
      QHBoxLayout *titleLayout;
@@ -106,7 +111,6 @@ private:
      QPushButton *showHide;
 
      QString title;
-     int index;
      int fullHeight;
      bool state;
 };
