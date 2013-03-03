@@ -19,6 +19,31 @@
 #include "GcSideBarItem.h"
 #include "GcCalendar.h"
 
+QIcon iconFromPNG(QString filename)
+{
+    QImage pngImage;
+    pngImage.load(filename);
+
+    // use muted dark gray color
+    QImage gray8 = pngImage.convertToFormat(QImage::Format_Indexed8);
+    QImage white8 = pngImage.convertToFormat(QImage::Format_Indexed8);
+    gray8.setColor(0, QColor(80,80,80, 255).rgb());
+    white8.setColor(0, QColor(255,255,255, 100).rgb());
+
+    // now convert to a format we can paint with!
+    QImage white = white8.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    QImage gray = gray8.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+
+    QPainter painter;
+    painter.begin(&white);
+    painter.setBackgroundMode(Qt::TransparentMode);
+    painter.drawImage(0,-1, gray);
+    painter.end();
+
+    QIcon icon(QPixmap::fromImage(white));
+    return icon;
+}
+
 GcSplitter::GcSplitter(Qt::Orientation orientation, QWidget *parent) : QWidget(parent)
 {
 
@@ -34,12 +59,57 @@ GcSplitter::GcSplitter(Qt::Orientation orientation, QWidget *parent) : QWidget(p
 
     QVBoxLayout *layout = new QVBoxLayout(this);
     layout->setSpacing(0);
-    layout->setAlignment(Qt::AlignBottom);
+    layout->setAlignment(Qt::AlignBottom|Qt::AlignHCenter);
     layout->setContentsMargins(0,0,0,0);
     layout->addWidget(splitter);
     layout->addWidget(control);
 
     connect(splitter,SIGNAL(splitterMoved(int,int)), this, SLOT(subSplitterMoved(int,int)));
+}
+
+void
+GcSplitter::prepare(QString cyclist, QString name)
+{
+    this->name = name;
+    this->cyclist = cyclist;
+
+    QWidget *spacer = new QWidget(this);
+    spacer->setAutoFillBackground(false);
+    spacer->setSizePolicy(QSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding));
+    control->addWidget(spacer);
+
+    // get saved state
+    QString statesetting = QString("splitter/%1/sizes").arg(name);
+    QVariant sizes = appsettings->cvalue(cyclist, statesetting); 
+    if (sizes != QVariant()) {
+        splitter->restoreState(sizes.toByteArray());
+        splitter->setOpaqueResize(true); // redraw when released, snappier UI
+    }
+
+    // should we hide / show each widget?
+    for(int i=0; i<splitter->count(); i++) {
+        QString hidesetting = QString("splitter/%1/hide/%2").arg(name).arg(i);
+        QVariant hidden = appsettings->cvalue(cyclist, hidesetting);
+        if (i && hidden != QVariant()) {
+            if (hidden.toBool() == true) {
+                splitter->widget(i)->hide();
+            }
+        }
+    }
+}
+
+void
+GcSplitter::saveSettings()
+{
+    // get saved state
+    QString statesetting = QString("splitter/%1/sizes").arg(name);
+    appsettings->setCValue(cyclist, statesetting, splitter->saveState()); 
+
+    // should we hide / show each widget?
+    for(int i=0; i<splitter->count(); i++) {
+        QString hidesetting = QString("splitter/%1/hide/%2").arg(name).arg(i);
+        appsettings->setCValue(cyclist, hidesetting, QVariant(splitter->widget(i)->isHidden()));
+    }
 }
 
 void
@@ -75,6 +145,7 @@ GcSplitter::restoreState(const QByteArray &state)
 void
 GcSplitter::subSplitterMoved(int pos, int index)
 {
+   saveSettings();
    emit splitterMoved(pos, index);
 }
 
@@ -90,7 +161,7 @@ GcSplitter::insertWidget(int index, QWidget *widget)
     splitter->insertWidget(index, widget);
 }
 
-GcSubSplitter::GcSubSplitter(Qt::Orientation orientation, GcSplitterControl *control, QWidget *parent) : QSplitter(orientation, parent), control(control)
+GcSubSplitter::GcSubSplitter(Qt::Orientation orientation, GcSplitterControl *control, GcSplitter *parent) : QSplitter(orientation, parent), control(control), gcSplitter (parent)
 {
     _insertedWidget = NULL;
 
@@ -131,6 +202,7 @@ GcSubSplitter::createHandle()
             control->addAction(_item->controlAction);
 
             connect(_item->controlAction, SIGNAL(triggered(void)), _item, SLOT(selectHandle(void)));
+            connect(_item->controlAction, SIGNAL(triggered(void)), gcSplitter, SLOT(saveSettings()));
             return _item->splitterHandle;
         }
     }
@@ -159,7 +231,7 @@ GcSplitterHandle::GcSplitterHandle(QString title, GcSplitterItem *widget, Qt::Or
     font.setFamily("Lucida Grande");
     font.setPointSize(11);
 #else
-    titleLabel->setYOff(1);
+    titleLabel->setYOff(2);
     font.setFamily("Helvetica");
     font.setPointSize(10);
 #endif
@@ -235,7 +307,11 @@ GcSplitterHandle::paintBackground(QPaintEvent *)
     QRect all(0,0,width(),height());
 
     // fill with a linear gradient
+#ifdef Q_OS_MAC
     int shade = isActiveWindow() ? 178 : 225;
+#else
+    int shade = isActiveWindow() ? 200 : 250;
+#endif
     QLinearGradient linearGradient(0, 0, 0, height());
     linearGradient.setColorAt(0.0, QColor(shade,shade,shade, 100));
     linearGradient.setColorAt(0.5, QColor(shade,shade,shade, 180));
@@ -282,10 +358,13 @@ GcSplitterControl::GcSplitterControl(QWidget *parent) : QToolBar(parent)
 {
     setContentsMargins(0,0,0,0);
     setFixedHeight(20);
-    setIconSize(QSize(16,16));
+    setIconSize(QSize(14,14));
     setToolButtonStyle(Qt::ToolButtonIconOnly);
     setAutoFillBackground(false);
-
+    QWidget *spacer = new QWidget(this);
+    spacer->setAutoFillBackground(false);
+    spacer->setSizePolicy(QSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding));
+    addWidget(spacer);
 }
 
 void
@@ -305,7 +384,11 @@ GcSplitterControl::paintBackground(QPaintEvent *)
     QPainter painter(this);
 
     // fill with a linear gradient
+#ifdef Q_OS_MAC
     int shade = isActiveWindow() ? 178 : 225;
+#else
+    int shade = isActiveWindow() ? 200 : 250;
+#endif
     QLinearGradient linearGradient(0, 0, 0, height());
     linearGradient.setColorAt(0.0, QColor(shade,shade,shade, 100));
     linearGradient.setColorAt(0.5, QColor(shade,shade,shade, 180));
@@ -319,7 +402,6 @@ void
 GcSplitterControl::selectAction()
 {
     this->setVisible(!this->isVisible());
-
 
     /*this->setBaseSize(width(), parentWidget()->height());
     this->setMaximumSize(QWIDGETSIZE_MAX,QWIDGETSIZE_MAX);*/
