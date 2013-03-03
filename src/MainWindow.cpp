@@ -659,20 +659,15 @@ MainWindow::MainWindow(const QDir &home) :
     intervalSplitter->setCollapsible(0, false);
     intervalSplitter->setCollapsible(1, false);
 
-    analItem = new GcSplitterItem(tr("Activities"), QIcon(QPixmap(":images/sidebar/folder.png")), this);
+    analItem = new GcSplitterItem(tr("Activities"), iconFromPNG(":images/sidebar/folder.png"), this);
     analItem->addWidget(activityHistory);
-    intervalItem = new GcSplitterItem(tr("Intervals"), QIcon(QPixmap(":images/mac/stop.png")), this);
+    intervalItem = new GcSplitterItem(tr("Intervals"), iconFromPNG(":images/mac/stop.png"), this);
     intervalItem->addWidget(intervalSplitter);
 
     analSidebar = new GcSplitter(Qt::Vertical);
     analSidebar->addWidget(analItem);
     analSidebar->addWidget(intervalItem);
-
-    QVariant analSplitterSizes = appsettings->cvalue(cyclist, GC_SETTINGS_INTERVALSPLITTER_SIZES); 
-    if (analSplitterSizes != QVariant()) {
-        analSidebar->restoreState(analSplitterSizes.toByteArray());
-        analSidebar->setOpaqueResize(true); // redraw when released, snappier UI
-    }
+    analSidebar->prepare(cyclist, "analysis");
 
     QTreeWidgetItem *last = NULL;
     QStringListIterator i(RideFileFactory::instance().listRideFiles(home));
@@ -994,7 +989,6 @@ MainWindow::MainWindow(const QDir &home) :
     connect(intervalWidget,SIGNAL(itemSelectionChanged()), this, SLOT(intervalTreeWidgetSelectionChanged()));
     connect(intervalWidget,SIGNAL(itemChanged(QTreeWidgetItem *,int)), this, SLOT(intervalEdited(QTreeWidgetItem*, int)));
     connect(splitter,SIGNAL(splitterMoved(int,int)), this, SLOT(splitterMoved(int,int)));
-    connect(analSidebar,SIGNAL(splitterMoved(int,int)), this, SLOT(analSidebarMoved(int,int)));
 
     connect(this, SIGNAL(rideDirty()), this, SLOT(enableSaveButton()));
     connect(this, SIGNAL(rideClean()), this, SLOT(enableSaveButton()));
@@ -1387,12 +1381,6 @@ MainWindow::resizeEvent(QResizeEvent*)
 }
 
 void
-MainWindow::analSidebarMoved(int /* pos */, int /*index*/)
-{
-    appsettings->setCValue(cyclist, GC_SETTINGS_INTERVALSPLITTER_SIZES, analSidebar->saveState());
-}
-
-void
 MainWindow::splitterMoved(int pos, int /*index*/)
 {
     // show / hide sidebar as dragged..
@@ -1623,13 +1611,13 @@ MainWindow::selectAnalysis()
         views->setCurrentWidget(blankStateAnalysisPage);
     } else {
         masterControls->setVisible(true);
-        toolBox->show();
+        //toolBox->show();
 #ifndef Q_OS_MAC
         side->setEnabled(true);
 #else
         scopebar->setEnabledHideButton(true);
 #endif
-		this->showSidebar(true);
+		//this->showSidebar(true);
         masterControls->setCurrentIndex(0);
         views->setCurrentIndex(0);
         analWindow->selected(); // tell it!
@@ -1666,13 +1654,13 @@ MainWindow::selectTrain()
         views->setCurrentWidget(blankStateTrainPage);
     } else {
         masterControls->setVisible(true);
-        toolBox->show();
+        //toolBox->show();
 #ifndef Q_OS_MAC
         side->setEnabled(true);
 #else
         scopebar->setEnabledHideButton(true);
 #endif
-		this->showSidebar(true);
+		//this->showSidebar(true);
         masterControls->setCurrentIndex(1);
         views->setCurrentIndex(1);
         trainWindow->selected(); // tell it!
@@ -1707,13 +1695,13 @@ MainWindow::selectDiary()
         views->setCurrentWidget(blankStateDiaryPage);
     } else {
         masterControls->setVisible(true);
-        toolBox->show();
+        //toolBox->show();
 #ifndef Q_OS_MAC
         side->setEnabled(true);
 #else
         scopebar->setEnabledHideButton(true);
 #endif
-		this->showSidebar(true);
+		//this->showSidebar(true);
         masterControls->setCurrentIndex(2);
         views->setCurrentIndex(2);
         diaryWindow->selected(); // tell it!
@@ -1746,13 +1734,13 @@ MainWindow::selectHome()
         views->setCurrentWidget(blankStateHomePage);
     } else {
         masterControls->setVisible(true);
-        toolBox->show();
+        //toolBox->show();
 #ifndef Q_OS_MAC
         side->setEnabled(true);
 #else
         scopebar->setEnabledHideButton(true);
 #endif
-		this->showSidebar(true);
+		//this->showSidebar(true);
         masterControls->setCurrentIndex(3);
         views->setCurrentIndex(3);
         homeWindow->selected(); // tell it!
