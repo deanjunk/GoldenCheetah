@@ -273,6 +273,13 @@ class MainWindow : public QMainWindow
         void closeBlankDiary();
         void closeBlankHome();
 
+        void downloadErgDB();
+        void manageLibrary();
+        void showWorkoutWizard();
+
+        void analysisPopup();
+        void intervalPopup();
+
     private slots:
         void rideTreeWidgetSelectionChanged();
         void intervalTreeWidgetSelectionChanged();
@@ -288,8 +295,6 @@ class MainWindow : public QMainWindow
         void downloadStrava();
         void uploadRideWithGPSAction();
         void uploadTtb();
-        void downloadErgDB();
-        void manageLibrary();
         void manualProcess(QString);
 #ifdef GC_HAVE_SOAP
         void uploadTP();
@@ -316,13 +321,15 @@ class MainWindow : public QMainWindow
         void toggleSidebar();
         void showSidebar(bool want);
         void showToolbar(bool want);
-        void showWorkoutWizard();
         void resetWindowLayout();
         void dateChanged(const QDate &);
         void showContextMenuPopup(const QPoint &);
-        void deleteInterval();
-        void renameInterval();
-        void zoomInterval();
+        void deleteInterval(); // from right click
+        void renameInterval(); // from right click
+        void zoomInterval(); // from right click
+        void renameIntervalSelected(void); // from menu popup
+        void deleteIntervalSelected(void); // from menu popup
+        void zoomIntervalSelected(void); // from menu popup
         void frontInterval();
         void backInterval();
         void intervalEdited(QTreeWidgetItem *, int);
