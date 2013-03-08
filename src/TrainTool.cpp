@@ -52,6 +52,7 @@
 
 #include <math.h> // isnan and isinf
 #include "TrainDB.h"
+#include "Library.h"
 
 TrainTool::TrainTool(MainWindow *parent, const QDir &home) : GcWindow(parent), home(home), main(parent)
 {
@@ -284,15 +285,29 @@ TrainTool::TrainTool(MainWindow *parent, const QDir &home) : GcWindow(parent), h
     trainSplitter = new GcSplitter(Qt::Vertical);
     trainSplitter->setContentsMargins(0,0,0,0);
     deviceItem = new GcSplitterItem(tr("Devices"), iconFromPNG(":images/sidebar/power.png"), this);
+
+    // devices splitter actions
+    QAction *moreDeviceAct = new QAction(iconFromPNG(":images/sidebar/extra.png"), tr("Menu"), this);
+    deviceItem->addAction(moreDeviceAct);
+    connect(moreDeviceAct, SIGNAL(triggered(void)), this, SLOT(devicePopup(void)));
+
     workoutItem = new GcSplitterItem(tr("Workouts"), iconFromPNG(":images/sidebar/folder.png"), this);
+    QAction *moreWorkoutAct = new QAction(iconFromPNG(":images/sidebar/extra.png"), tr("Menu"), this);
+    workoutItem->addAction(moreWorkoutAct);
+    connect(moreWorkoutAct, SIGNAL(triggered(void)), this, SLOT(workoutPopup(void)));
+
     deviceItem->addWidget(deviceTree);
     trainSplitter->addWidget(deviceItem);
     workoutItem->addWidget(workoutTree);
     trainSplitter->addWidget(workoutItem);
     cl->addWidget(trainSplitter);
 
+
 #if defined Q_OS_MAC || defined GC_HAVE_VLC
     mediaItem = new GcSplitterItem(tr("Media"), iconFromPNG(":images/sidebar/movie.png"), this);
+    QAction *moreMediaAct = new QAction(iconFromPNG(":images/sidebar/extra.png"), tr("Menu"), this);
+    mediaItem->addAction(moreMediaAct);
+    connect(moreMediaAct, SIGNAL(triggered(void)), this, SLOT(mediaPopup(void)));
     mediaItem->addWidget(mediaTree);
     trainSplitter->addWidget(mediaItem);
 #endif
@@ -395,6 +410,71 @@ TrainTool::refresh()
 
     // restore selection
     selectWorkout(workoutPath);
+}
+
+void
+TrainTool::workoutPopup()
+{
+    // OK - we are working with a specific event..
+    QMenu menu(workoutTree);
+    QAction *import = new QAction(tr("Import Workout from File"), workoutTree);
+    QAction *download = new QAction(tr("Get Workouts from ErgDB"), workoutTree);
+    QAction *wizard = new QAction(tr("Create Workout via Wizard"), workoutTree);
+    QAction *scan = new QAction(tr("Scan for Workouts"), workoutTree);
+
+    menu.addAction(import);
+    menu.addAction(download);
+    menu.addAction(wizard);
+    menu.addAction(scan);
+
+    // we can delete too
+    QModelIndex current = workoutTree->currentIndex();
+    QModelIndex target = sortModel->mapToSource(current);
+    QString filename = workoutModel->data(workoutModel->index(target.row(), 0), Qt::DisplayRole).toString();
+    if (QFileInfo(filename).exists()) {
+        QAction *del = new QAction(tr("Delete selected workout"), workoutTree);
+        menu.addAction(del);
+        connect(del, SIGNAL(triggered(void)), this, SLOT(deleteWorkouts(void)));
+    }
+
+    // connect menu to functions
+    connect(import, SIGNAL(triggered(void)), main, SLOT(importWorkout(void)));
+    connect(wizard, SIGNAL(triggered(void)), main, SLOT(showWorkoutWizard(void)));
+    connect(download, SIGNAL(triggered(void)), main, SLOT(downloadErgDB(void)));
+    connect(scan, SIGNAL(triggered(void)), main, SLOT(manageLibrary(void)));
+
+    // execute the menu
+    menu.exec(trainSplitter->mapToGlobal(QPoint(workoutItem->pos().x()+workoutItem->width()-20,
+                                           workoutItem->pos().y())));
+}
+
+void
+TrainTool::mediaPopup()
+{
+    // OK - we are working with a specific event..
+    QMenu menu(mediaTree);
+    QAction *import = new QAction(tr("Import Video from File"), mediaTree);
+    QAction *scan = new QAction(tr("Scan for Videos"), mediaTree);
+
+    menu.addAction(import);
+    menu.addAction(scan);
+
+    // connect menu to functions
+    connect(import, SIGNAL(triggered(void)), main, SLOT(importWorkout(void)));
+    connect(scan, SIGNAL(triggered(void)), main, SLOT(manageLibrary(void)));
+
+    QModelIndex current = mediaTree->currentIndex();
+    QModelIndex target = vsortModel->mapToSource(current);
+    QString filename = videoModel->data(videoModel->index(target.row(), 0), Qt::DisplayRole).toString();
+    if (QFileInfo(filename).exists()) {
+        QAction *del = new QAction(tr("Delete selected video"), workoutTree);
+        menu.addAction(del);
+        connect(del, SIGNAL(triggered(void)), this, SLOT(deleteVideos(void)));
+    }
+
+    // execute the menu
+    menu.exec(trainSplitter->mapToGlobal(QPoint(mediaItem->pos().x()+mediaItem->width()-20,
+                                           mediaItem->pos().y())));
 }
 
 void
@@ -585,6 +665,68 @@ TrainTool::listWorkoutFiles(const QDir &dir) const
     filters << "*.pgmf";
 
     return dir.entryList(filters, QDir::Files, QDir::Name);
+}
+
+void
+TrainTool::deleteVideos()
+{
+    QModelIndex current = mediaTree->currentIndex();
+    QModelIndex target = vsortModel->mapToSource(current);
+    QString filename = videoModel->data(videoModel->index(target.row(), 0), Qt::DisplayRole).toString();
+
+    if (QFileInfo(filename).exists()) {
+        // are you sure?
+        QMessageBox msgBox;
+        msgBox.setText(tr("Are you sure you want to delete this video?"));
+        msgBox.setInformativeText(filename);
+        QPushButton *deleteButton = msgBox.addButton(tr("Delete"),QMessageBox::YesRole);
+        msgBox.setStandardButtons(QMessageBox::Cancel);
+        msgBox.setDefaultButton(QMessageBox::Cancel);
+        msgBox.setIcon(QMessageBox::Critical);
+        msgBox.exec();
+
+        if(msgBox.clickedButton() != deleteButton) return;
+
+        // delete from disk
+        //XXX QFile(filename).remove(); // lets not for now..
+
+        // remove any reference (from drag and drop)
+        Library *l = Library::findLibrary("Media Library");
+        if (l) l->removeRef(main, filename);
+
+        // delete from DB
+        trainDB->startLUW();
+        trainDB->deleteVideo(filename);
+        trainDB->endLUW();
+    }
+}
+void
+TrainTool::deleteWorkouts()
+{
+    QModelIndex current = workoutTree->currentIndex();
+    QModelIndex target = sortModel->mapToSource(current);
+    QString filename = workoutModel->data(workoutModel->index(target.row(), 0), Qt::DisplayRole).toString();
+
+    if (QFileInfo(filename).exists()) {
+        // are you sure?
+        QMessageBox msgBox;
+        msgBox.setText(tr("Are you sure you want to delete this workout?"));
+        msgBox.setInformativeText(filename);
+        QPushButton *deleteButton = msgBox.addButton(tr("Delete"),QMessageBox::YesRole);
+        msgBox.setStandardButtons(QMessageBox::Cancel);
+        msgBox.setDefaultButton(QMessageBox::Cancel);
+        msgBox.setIcon(QMessageBox::Critical);
+        msgBox.exec();
+
+        if(msgBox.clickedButton() != deleteButton) return;
+
+        // delete from disk
+        QFile(filename).remove();
+        // delete from DB
+        trainDB->startLUW();
+        trainDB->deleteWorkout(filename);
+        trainDB->endLUW();
+    }
 }
 
 void
@@ -1506,6 +1648,26 @@ MultiDeviceDialog::cancelClicked()
     reject();
 }
 
+void
+TrainTool::devicePopup()
+{
+    // OK - we are working with a specific event..
+    QMenu menu(deviceTree);
+
+    QAction *addDevice = new QAction(tr("Add Device"), deviceTree);
+    connect(addDevice, SIGNAL(triggered(void)), main, SLOT(addDevice()));
+    menu.addAction(addDevice);
+
+    if (deviceTree->selectedItems().size() == 1) {
+        QAction *delDevice = new QAction(tr("Delete Device"), deviceTree);
+        connect(delDevice, SIGNAL(triggered(void)), this, SLOT(deleteDevice()));
+        menu.addAction(delDevice);
+    }
+
+    // execute the menu
+    menu.exec(trainSplitter->mapToGlobal(QPoint(deviceItem->pos().x()+deviceItem->width()-20,
+                                           deviceItem->pos().y())));
+}
 void
 TrainTool::deviceTreeMenuPopup(const QPoint &pos)
 {
