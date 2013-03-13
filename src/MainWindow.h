@@ -57,6 +57,7 @@ class IntervalSummaryWindow;
 class RideNavigator;
 class GcToolBar;
 class GcCalendar;
+class GcMultiCalendar;
 class GcBubble;
 class LTMSidebar;
 class LionFullScreen;
@@ -415,6 +416,7 @@ class MainWindow : public QMainWindow
         QMenu *windowMenu;
         GcBubble *bubble;
         GcCalendar *gcCalendar;
+        GcMultiCalendar *gcMultiCalendar;
 
         // each view has its own controls XXX more to come
         QStackedWidget *masterControls,
@@ -445,6 +447,7 @@ class MainWindow : public QMainWindow
         IntervalTreeView *intervalWidget;
 
         // Miscellany
+        QSignalMapper *groupByMapper;
         QSignalMapper *toolMapper;
         WithingsDownload *withingsDownload;
         ZeoDownload *zeoDownload;
