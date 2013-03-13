@@ -133,7 +133,7 @@ QDesktopWidget *desktop = NULL;
 MainWindow::MainWindow(const QDir &home) :
     home(home), session(0), isclean(false), ismultisave(false),
     zones_(new Zones), hrzones_(new HrZones),
-    ride(NULL), workout(NULL)
+    ride(NULL), workout(NULL), groupByMapper(NULL)
 {
     #ifdef Q_OS_MAC
     // get an autorelease pool setup
@@ -659,12 +659,16 @@ MainWindow::MainWindow(const QDir &home) :
     intervalSplitter->setCollapsible(0, false);
     intervalSplitter->setCollapsible(1, false);
 
+    GcSplitterItem *calendarItem = new GcSplitterItem(tr("Calendar"), iconFromPNG(":images/sidebar/calendar.png"), this);
+    gcMultiCalendar = new GcMultiCalendar(this);
+    calendarItem->addWidget(gcMultiCalendar);
+
     analItem = new GcSplitterItem(tr("Activities"), iconFromPNG(":images/sidebar/folder.png"), this);
     QAction *moreAnalAct = new QAction(iconFromPNG(":images/sidebar/extra.png"), tr("Menu"), this);
     analItem->addAction(moreAnalAct);
     connect(moreAnalAct, SIGNAL(triggered(void)), this, SLOT(analysisPopup()));
-
     analItem->addWidget(activityHistory);
+
     intervalItem = new GcSplitterItem(tr("Intervals"), iconFromPNG(":images/mac/stop.png"), this);
     QAction *moreIntervalAct = new QAction(iconFromPNG(":images/sidebar/extra.png"), tr("Menu"), this);
     intervalItem->addAction(moreIntervalAct);
@@ -672,6 +676,7 @@ MainWindow::MainWindow(const QDir &home) :
     intervalItem->addWidget(intervalSplitter);
 
     analSidebar = new GcSplitter(Qt::Vertical);
+    analSidebar->addWidget(calendarItem);
     analSidebar->addWidget(analItem);
     analSidebar->addWidget(intervalItem);
     analSidebar->prepare(cyclist, "analysis");
@@ -821,12 +826,6 @@ MainWindow::MainWindow(const QDir &home) :
     splitter->addWidget(views);
 #endif
 
-    QVariant splitterSizes = appsettings->cvalue(cyclist, GC_SETTINGS_SPLITTER_SIZES); 
-    if (splitterSizes.toByteArray().size() > 1 ) {
-        splitter->restoreState(splitterSizes.toByteArray());
-        splitter->setOpaqueResize(true); // redraw when released, snappier UI
-    }
-
     splitter->setStretchFactor(0,0);
     splitter->setStretchFactor(1,1);
     splitter->setCollapsible(0, true);
@@ -836,6 +835,11 @@ MainWindow::MainWindow(const QDir &home) :
     splitter->setFrameStyle(QFrame::NoFrame);
     splitter->setContentsMargins(0, 0, 0, 0); // attempting to follow some UI guides
 
+    QVariant splitterSizes = appsettings->cvalue(cyclist, GC_SETTINGS_SPLITTER_SIZES); 
+    if (splitterSizes.toByteArray().size() > 1 ) {
+        splitter->restoreState(splitterSizes.toByteArray());
+        splitter->setOpaqueResize(true); // redraw when released, snappier UI
+    }
 
     // CENTRAL LAYOUT
     QWidget *central = new QWidget(this);
@@ -1235,6 +1239,7 @@ MainWindow::rideTreeWidgetSelectionChanged()
     diaryWindow->setProperty("ride", QVariant::fromValue<RideItem*>(dynamic_cast<RideItem*>(ride)));
     trainWindow->setProperty("ride", QVariant::fromValue<RideItem*>(dynamic_cast<RideItem*>(ride)));
     gcCalendar->setRide(ride);
+    gcMultiCalendar->setRide(ride);
 
     enableSaveButton(); // should it be enabled or not?
 
@@ -1353,6 +1358,42 @@ MainWindow::showTreeContextMenuPopup(const QPoint &pos)
         connect(actUploadCalendar, SIGNAL(triggered(void)), this, SLOT(uploadCalendar()));
         menu.addAction(actUploadCalendar);
 #endif
+        menu.addSeparator();
+
+        // ride navigator stuff
+        QAction *colChooser = new QAction(tr("Show Column Chooser"), treeWidget);
+        connect(colChooser, SIGNAL(triggered(void)), listView, SLOT(showColumnChooser()));
+        menu.addAction(colChooser);
+
+        if (listView->groupBy() >= 0) {
+
+            // already grouped lets ungroup
+            QAction *nogroups = new QAction(tr("Do Not Show In Groups"), treeWidget);
+            connect(nogroups, SIGNAL(triggered(void)), listView, SLOT(noGroups()));
+            menu.addAction(nogroups);
+
+        } else {
+
+            QMenu *groupByMenu = new QMenu(tr("Group By"), treeWidget);
+            groupByMenu->setEnabled(true);
+            menu.addMenu(groupByMenu);
+
+            // add menu options for each column
+            if (groupByMapper) delete groupByMapper;
+            groupByMapper = new QSignalMapper(this);
+            connect(groupByMapper, SIGNAL(mapped(const QString &)), listView, SLOT(setGroupByColumnName(QString)));
+
+            foreach(QString heading, listView->columnNames()) {
+                if (heading == "*") continue; // special hidden column
+
+                QAction *groupByAct = new QAction(heading, treeWidget);
+                connect(groupByAct, SIGNAL(triggered()), groupByMapper, SLOT(map()));
+                groupByMenu->addAction(groupByAct);
+
+                // map action to column heading
+                groupByMapper->setMapping(groupByAct, heading);
+            }
+        }
         menu.exec(pos);
     }
 }
@@ -2051,7 +2092,11 @@ MainWindow::exportRide()
         allFormats << QString("%1 (*.%2)").arg(rff.description(suffix)).arg(suffix);
 
     QString suffix; // what was selected?
+#ifdef Q_OS_LINUX
+    QString fileName = QFileDialog::getSaveFileName(this, tr("Export Activity"), QDir::homePath(), allFormats.join(";;"), &suffix, QFileDialog::DontUseNativeDialog);
+#else
     QString fileName = QFileDialog::getSaveFileName(this, tr("Export Activity"), QDir::homePath(), allFormats.join(";;"), &suffix);
+#endif
 
     if (fileName.length() == 0) return;
 
@@ -2086,9 +2131,11 @@ MainWindow::importFile()
     foreach(QString suffix, rff.suffixes())
         allFormats << QString("%1 (*.%2)").arg(rff.description(suffix)).arg(suffix);
     allFormats << "All files (*.*)";
-    fileNames = QFileDialog::getOpenFileNames(
-        this, tr("Import from File"), lastDir,
-        allFormats.join(";;"));
+#ifdef Q_OS_LINUX // native dialog borked
+    fileNames = QFileDialog::getOpenFileNames( this, tr("Import from File"), lastDir, allFormats.join(";;"), 0, QFileDialog::DontUseNativeDialog);
+#else
+    fileNames = QFileDialog::getOpenFileNames( this, tr("Import from File"), lastDir, allFormats.join(";;"));
+#endif
     if (!fileNames.isEmpty()) {
         lastDir = QFileInfo(fileNames.front()).absolutePath();
         appsettings->setValue(GC_SETTINGS_LAST_IMPORT_PATH, lastDir);
@@ -2210,8 +2257,11 @@ MainWindow::openCyclist()
 void
 MainWindow::exportMetrics()
 {
-    QString fileName = QFileDialog::getSaveFileName(
-        this, tr("Export Metrics"), QDir::homePath(), tr("Comma Separated Variables (*.csv)"));
+#ifdef Q_OS_LINUX
+    QString fileName = QFileDialog::getSaveFileName( this, tr("Export Metrics"), QDir::homePath(), tr("Comma Separated Variables (*.csv)"), 0, QFileDialog::DontUseNativeDialog);
+#else
+    QString fileName = QFileDialog::getSaveFileName( this, tr("Export Metrics"), QDir::homePath(), tr("Comma Separated Variables (*.csv)"));
+#endif
     if (fileName.length() == 0)
         return;
     metricDB->writeAsCSV(fileName);
@@ -2292,8 +2342,11 @@ MainWindow::importWorkout()
     // anything for now, we could add filters later
     QStringList allFormats;
     allFormats << "All files (*.*)";
-    QStringList fileNames = QFileDialog::getOpenFileNames(this, tr("Import from File"), lastDir,
-                                                                          allFormats.join(";;"));
+#ifdef Q_OS_LINUX
+    QStringList fileNames = QFileDialog::getOpenFileNames(this, tr("Import from File"), lastDir, allFormats.join(";;"), 0, QFileDialog::DontUseNativeDialog);
+#else
+    QStringList fileNames = QFileDialog::getOpenFileNames(this, tr("Import from File"), lastDir, allFormats.join(";;"));
+#endif
 
     // lets process them 
     if (!fileNames.isEmpty()) {

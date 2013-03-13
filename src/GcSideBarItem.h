@@ -103,24 +103,18 @@ protected:
     GcSubSplitter *gcSplitter;
     int index;
 
-public slots:
-    void showHideClicked();
-
-    void setExpanded(bool expanded);
-
 private:
     void paintBackground(QPaintEvent *);
 
-     GcSplitterItem *widget;
+    GcSplitterItem *widget;
 
-     QHBoxLayout *titleLayout;
-     GcLabel *titleLabel;
-     QToolBar *titleToolbar;
-     QPushButton *showHide;
+    QHBoxLayout *titleLayout;
+    GcLabel *titleLabel;
+    QToolBar *titleToolbar;
 
-     QString title;
-     int fullHeight;
-     bool state;
+    QString title;
+    int fullHeight;
+    QLinearGradient active, inactive;
 };
 
 class GcSplitterControl : public QToolBar
@@ -136,6 +130,7 @@ protected:
 
 private:
     void paintBackground(QPaintEvent *);
+    QLinearGradient active, inactive;
 
 };
 
