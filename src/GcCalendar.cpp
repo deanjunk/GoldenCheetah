@@ -151,6 +151,7 @@ GcLabel::paintEvent(QPaintEvent *)
 {
     QPainter painter(this);
     painter.save();
+    painter.setRenderHints(QPainter::Antialiasing|QPainter::TextAntialiasing, true);
 
     if (bg) {
         // setup a painter and the area to paint
