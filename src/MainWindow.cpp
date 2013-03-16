@@ -409,6 +409,8 @@ MainWindow::MainWindow(const QDir &home) :
 
     head = new GcToolBar(this);
 
+    QCleanlooksStyle *toolStyle = new QCleanlooksStyle();
+
     // get those icons
     importIcon = iconFromPNG(":images/mac/download.png");
     composeIcon = iconFromPNG(":images/mac/compose.png");
@@ -427,21 +429,28 @@ MainWindow::MainWindow(const QDir &home) :
     import->setIcon(importIcon);
     import->setIconSize(isize);
     import->setFixedHeight(25);
+    import->setStyle(toolStyle);
+    import->setToolTip(tr("Download from Device"));
     connect(import, SIGNAL(clicked(bool)), this, SLOT(downloadRide()));
 
     compose = new QPushButton(this);
     compose->setIcon(composeIcon);
     compose->setIconSize(isize);
     compose->setFixedHeight(25);
+    compose->setStyle(toolStyle);
+    compose->setToolTip(tr("Create Manual Activity"));
     connect(compose, SIGNAL(clicked(bool)), this, SLOT(manualRide()));
 
     sidebar = new QPushButton(this);
     sidebar->setIcon(sidebarIcon);
     sidebar->setIconSize(isize);
     sidebar->setFixedHeight(25);
+    sidebar->setStyle(toolStyle);
+    sidebar->setToolTip(tr("Toggle Sidebar"));
     connect(sidebar, SIGNAL(clicked(bool)), this, SLOT(toggleSidebar()));
 
     actbuttons = new QtSegmentControl(this);
+    actbuttons->setStyle(toolStyle);
     actbuttons->setIconSize(isize);
     actbuttons->setCount(3);
     actbuttons->setSegmentIcon(0, intervalIcon);
@@ -449,16 +458,22 @@ MainWindow::MainWindow(const QDir &home) :
     actbuttons->setSegmentIcon(2, deleteIcon);
     actbuttons->setSelectionBehavior(QtSegmentControl::SelectNone); //wince. spelling. ugh
     actbuttons->setFixedHeight(25);
+    actbuttons->setSegmentToolTip(0, tr("Find Intervals"));
+    actbuttons->setSegmentToolTip(1, tr("Split Activity"));
+    actbuttons->setSegmentToolTip(2, tr("Delete Activity"));
     connect(actbuttons, SIGNAL(segmentSelected(int)), this, SLOT(actionClicked(int)));
 
     styleSelector = new QtSegmentControl(this);
+    styleSelector->setStyle(toolStyle);
     styleSelector->setIconSize(isize);
     styleSelector->setCount(2);
     styleSelector->setSegmentIcon(0, tabbedIcon);
     styleSelector->setSegmentIcon(1, tiledIcon);
+    styleSelector->setSegmentToolTip(0, tr("Tabbed View"));
+    styleSelector->setSegmentToolTip(1, tr("Tiled View"));
     styleSelector->setSelectionBehavior(QtSegmentControl::SelectOne); //wince. spelling. ugh
     styleSelector->setFixedHeight(25);
-    //connect(styleSelector, SIGNAL(segmentSelected(int)), this, SLOT(toggleStyle()));
+    connect(styleSelector, SIGNAL(segmentSelected(int)), this, SLOT(setStyleFromSegment(int))); //avoid toggle infinitely
 
     head->addWidget(spacerl);
     head->addWidget(import);
@@ -472,15 +487,13 @@ MainWindow::MainWindow(const QDir &home) :
 #ifdef GC_HAVE_LUCENE
     // add a search box on far right, but with a little space too
     SearchFilterBox *searchBox = new SearchFilterBox(this,this);
+    searchBox->setStyle(toolStyle);
     searchBox->setFixedWidth(250);
     head->addWidget(searchBox);
+#endif
     Spacer *spacer = new Spacer(this);
     spacer->setFixedWidth(5);
-    //spacer->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     head->addWidget(spacer);
-#else
-    head->addStretch();
-#endif
 #endif
 
     /*----------------------------------------------------------------------
@@ -788,6 +801,11 @@ MainWindow::MainWindow(const QDir &home) :
     /*----------------------------------------------------------------------
      * Application Menus
      *--------------------------------------------------------------------*/
+#ifdef WIN32
+    menuBar()->setStyleSheet("QMenuBar { background: rgba(225,225,225); }"
+		    	     "QMenuBar::item { background: rgba(225,225,225); }");
+    menuBar()->setContentsMargins(0,0,0,0);
+#endif
 
     QMenu *fileMenu = menuBar()->addMenu(tr("&Athlete"));
     fileMenu->addAction(tr("&New..."), this, SLOT(newCyclist()), tr("Ctrl+N"));
@@ -1102,6 +1120,14 @@ MainWindow::selectWindow(QAction *act)
             break;
         }
     }
+}
+
+void
+MainWindow::setStyleFromSegment(int segment)
+{
+    if (!currentWindow) return;
+    currentWindow->setStyle(segment ? 2 : 0);
+    styleAction->setChecked(!segment);
 }
 
 void
@@ -1610,9 +1636,9 @@ MainWindow::selectAnalysis()
         analWindow->selected(); // tell it!
         trainTool->getToolbarButtons()->hide();
 #ifdef GC_HAVE_ICAL
-        scopebar->selected(1);
-#else
         scopebar->selected(2);
+#else
+        scopebar->selected(1);
 #endif
         toolBox->setCurrentIndex(0);
     }
@@ -1637,9 +1663,9 @@ MainWindow::selectTrain()
         trainWindow->selected(); // tell it!
         trainTool->getToolbarButtons()->show();
 #ifdef GC_HAVE_ICAL
-        scopebar->selected(2);
-#else
         scopebar->selected(3);
+#else
+        scopebar->selected(2);
 #endif
         toolBox->setCurrentIndex(2);
     }
@@ -1691,10 +1717,6 @@ MainWindow::selectHome()
     currentWindow = homeWindow;
     setStyle();
 }
-void
-MainWindow::selectAthlete()
-{
-}
 
 void
 MainWindow::setStyle()
@@ -1704,7 +1726,8 @@ MainWindow::setStyle()
 #ifdef Q_OS_MAC
     styleSelector->setSelected(select, true);
 #else
-    styleSelector->setSegmentSelected(select, true);
+    if (styleSelector->isSegmentSelected(select) == false)
+        styleSelector->setSegmentSelected(select, true);
 #endif
 }
 
@@ -2568,11 +2591,11 @@ MainWindow::exportMeasures()
     start.fromTime_t(0);
 
     foreach (SummaryMetrics x, metricDB->db()->getAllMeasuresFor(start, end)) {
-qDebug()<<x.getDateTime();
-qDebug()<<x.getText("Weight", "0.0").toDouble();
-qDebug()<<x.getText("Lean Mass", "0.0").toDouble();
-qDebug()<<x.getText("Fat Mass", "0.0").toDouble();
-qDebug()<<x.getText("Fat Ratio", "0.0").toDouble();
+//qDebug()<<x.getDateTime();
+//qDebug()<<x.getText("Weight", "0.0").toDouble();
+//qDebug()<<x.getText("Lean Mass", "0.0").toDouble();
+//qDebug()<<x.getText("Fat Mass", "0.0").toDouble();
+//qDebug()<<x.getText("Fat Ratio", "0.0").toDouble();
     }
 }
 

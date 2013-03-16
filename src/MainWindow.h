@@ -374,7 +374,6 @@ class MainWindow : public QMainWindow
         void selectDiary();
         void selectAnalysis();
         void selectTrain();
-        void selectAthlete();
 
         void setActivityMenu();
         void setWindowMenu();
@@ -386,6 +385,8 @@ class MainWindow : public QMainWindow
 
         void toggleStyle();
         void setStyle();
+        // special case for linux/win qtsegmentcontrol toggline
+        void setStyleFromSegment(int);
 
 #ifndef Q_OS_MAC
         void toggleFullScreen();
