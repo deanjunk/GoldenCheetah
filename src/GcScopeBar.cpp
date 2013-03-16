@@ -182,12 +182,20 @@ GcScopeBar::selected(int index)
     anal->setChecked(false);
     train->setChecked(false);
 
+#ifdef GC_HAVE_ICAL
     switch (index) {
         case 0 : home->setChecked(true); break;
         case 1 : diary->setChecked(true); break;
         case 2 : anal->setChecked(true); break;
         case 3 : train->setChecked(true); break;
     }
+#else
+    switch (index) {
+        case 0 : home->setChecked(true); break;
+        case 1 : anal->setChecked(true); break;
+        case 2 : train->setChecked(true); break;
+    }
+#endif
 }
 
 #ifndef Q_OS_MAC
@@ -198,7 +206,11 @@ GcScopeButton::GcScopeButton(QWidget *parent) : QWidget(parent)
     checked = false;
     QFont font;
     font.setFamily("Helvetica");
+#ifdef WIN32
+    font.setPointSize(8);
+#else
     font.setPointSize(10);
+#endif
     font.setWeight(QFont::Black);
     setFont(font);
 }
