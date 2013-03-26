@@ -1,0 +1,594 @@
+\input texinfo   @c -*-texinfo-*-
+@c %**start of header
+@setfilename GC3-Manual.texinfo
+@settitle Golden Cheetah User Manual
+@c %**end of header
+@paragraphindent 0
+ 
+@copying
+This manual is for Golden Cheetah, version 3.0.
+ 
+Copyright @copyright{} 2013 Mark Liversedge
+@end copying
+ 
+@titlepage
+@image{"image/0-icon",140pt,140pt}
+@vskip 20pt
+@title Golden Cheetah User Manual
+@c @subtitle subtitle-if-any
+@c @subtitle second-subtitle
+@author Mark Liversedge
+ 
+@c  The following two commands
+@c  start the copyright page.
+@page
+@vskip 0pt plus 1filll
+@insertcopying
+ 
+@end titlepage
+ 
+@c So the toc is printed at the start.
+@contents
+ 
+@c ********************************************************************************
+@c Welcome chapter
+@c ********************************************************************************
+@chapter WELCOME TO GOLDENCHEETAH
+@node WELCOME
+ 
+GoldenCheetah is an open source program for cyclists.
+ 
+In fact, it is primarily a program for cyclists with a power meter. It provides functions
+to download, import, edit, upload and analyse rides containing power data.
+ 
+It can be used to analyse bike rides that do not contain power, perhaps containing speed,
+cadence or GPS data. It can be used to analyse other kinds of workouts, perhaps run or
+swim activities. It can be used purely as a log or journal for any activity.
+ 
+But, it is primarily an open source program for cyclists that own a power meter.
+ 
+In addition to the post-workout analysis it can also be used as a desktop application to
+record and monitor workouts on a cycle trainer. It captures telemetry from ANT+ sensors
+and can also work directly with Bike trainers that provide the right kind of interface.
+ 
+In this manual we will be explaining how to use and configure the functions within GoldenCheetah.
+We will be describing it from the perspective of a bike rider. In all cases we will be describing
+how the functions within GoldenCheetah work, and how to configure them.
+ 
+This is not a manual on how to train with power. We would urge you to read other books for that
+kind of information and would recommend `Racing and Training with a Power Meter' by
+Dr Andrew Coggan and Hunter Allan.
+ 
+@section About this latest version, V3.0
+
+This manual has been written as a companion to the latest release of GoldenCheetah, v3.0.
+Released in Spring 2013, it represented an overhaul of the code and was a major update.
+ 
+If you are new to GoldenCheetah then all the functions it provides will be new to you, but
+for existing users, version 3.0 had introduced;
+ 
+@heading 500+ bug fixes and minor enhancements
+ 
+It fixed 46 serious issues and over 400 bugs in over 1,500 different
+commits. GoldenCheetah is now over 100,000 lines of code.  In addition
+to addressing stability issues it also addressed a number of performance
+related issues.  Whilst the new metric functionality and database means that
+a modern PC is recommended, the code is still efficient enough to run on
+a netbook.
+ 
+@heading Redesigned UI and UX
+ 
+One of the most immediate changes you will notice with v3.0 are the
+major changes to the user experience and user interface. From the
+initial help screens for new users through to the redesigned preferences
+pane for advanced users, it is slicker and more professional.
+ 
+There are 4 views available with specific and detailed sidebars for
+performance tracking (home), short term tracking (diary) as well as
+the well known analysis and training views from earlier releases.
+ 
+It now allows you to view charts tabbed and tiled, you can resize and
+move charts around and customise them using roll-over controls. The
+activity list is fully configurable and can be configured to show any
+number of columns.
+ 
+@heading Support for the latest bike computers
+ 
+It supports direct download features for the Cyclops Joule and Joule GPS
+as well as the latest SRM Powercontrol 6 and 7. We also added support for
+the O-sync Macro and Macro X.
+ 
+@heading Support for more telemetry
+ 
+Alongside the support for the latest bike computers it also added the ability to
+track and plot new data series, including; Headwind, LR Balance, Temperature and
+Slope.
+ 
+@heading Export and Batch Export as well as lots of new file formats
+ 
+It will now export and batch export your data to a wide variety of file
+formats include TCX, PWX, JSON and XML as well as FITLOG and GPX.
+ 
+It also supports reading files from SportTracks, GPX, Tacx CAF and the
+SLF/SMF file formats. We have also added legacy WKO+ file format support
+(CP 1.0 and 1.1) as well as import of Wattbike TXT exports.
+ 
+@heading Support for a wide selection of internet services
+ 
+It can upload and download data from; Withings, Zeo, Strava, TrainingPeaks,
+Training Stage Buch, RideWithGPS as well as Internet based calendars (calDAV)
+such as Google Calendar.
+ 
+@heading Realtime training significantly enhanced
+ 
+Support has been added for native ANT+ removing the need for quarqd. Video Playback
+is built in using VLC/QTKit. It now has a  media library to organise and reference
+any video content you may have from Tacx Ergvideos through Sufferfest.
+ 
+It supports Virtual Power for popular devices from KK, LeMond and many other
+trainers.  We have added support for the amazing new Wahoo Fitness Kickr trainer
+as well as the old Tacx Fortius.
+ 
+It also introduces new ways to ride on the trainer including;
+Streetview, SpinScan (on Computrainer) and an enhanced Workout Plot that plots
+telemetry against the workout as you ride.
+ 
+It also includes Computrainer calibration, a workout wizard and download
+from ErgDB as well as Multi-device Support allowing you to ride with with
+your ANT+ powermeter on your Computrainer, Kickr or Fortius.
+ 
+@heading Advanced search and data filtering
+ 
+It introduces free text search across all activities and a data filter (using the same search box)
+to filter activities with specific properties. Some examples of using the filter might be
+finding all rides with a TSS > 300 or perhaps those with an IF >0.9 and a duration of > 1hr.
+ 
+The search and filter functions can be applied to the charts -- which means that
+you can plot a PMC only where sport is "Bike" or perhaps power distribution but only
+where the workout code is FTPTEST.
+ 
+@heading Lots of new charts
+ 
+It provides a new HR to Power analysis chart as well as a more utilitarian 2d scatter
+plot. It will also use Bing as map provider for the Map chart.
+ 
+The histogram and CP curve plots will now plot data for a date range rather than for
+a specific ride and it will also now plot a mean max curve for HR, Power, Speed, Cadence,
+xPower, VAM and NP.
+ 
+@heading New metrics, including TrainingPeaks' TSS and NP
+ 
+The TrainingPeaks metrics have been added to both the analysis functions as well as the
+training functions (e.g. track TSS as you ride the trainer).
+ 
+There are now over 100 different metrics and measures you can work with including things
+like; Pace, Maximums, Gradient, VAM, wpk, time in HR Zones and many, many more.
+ 
+@section Open Source
+ 
+GoldenCheetah is an open source program. This means the source code is freely available to
+download and compile. You can add new features and fix bugs. All we ask is that you then
+share your work back to the main project.
+ 
+This is how GoldenCheetah has developed since it was first created in 2006. Over 50 different
+people have contributed new features and fixes in the 7 years since then.
+ 
+@heading Mailing list
+ 
+As you would expect there is an active community of users and developers, you can join the
+discussion and contribute. The main GoldenCheetah website is @url{www.goldencheetah.org}
+and the main mailing list is hosted on Google Groups and is called golden-cheetah-users.
+ 
+@heading Reporting bugs and requesting new features
+ 
+The code is hosted in a repository at GitHub. Github is an internet service hosting open
+source and commercial code repositories for thousands of projects. In addition to hosting
+projects GitHub also provides an issue tracker.
+ 
+The issue tracker URL is: @url{github.com/GoldenCheetah/GoldenCheetah/issues}.
+ 
+We use the GitHub issue tracker to manage all bug reports and feature requests. If you are
+looking for a new feature or have experienced a problem using the software then you should
+consider raising it on the issue tracker.
+ 
+As a non-developer one of the most valuable contributions you can make to the project is to
+provide accurate and informative bug reports. This makes it easier for the developers to fix
+the code and in turn makes the software better for everyone.
+
+@section Bit of Past and Present
+ 
+In early 2006 a Cat 1 racer called Sean Rhea bought a Powertap. Back then power meters were not
+very common. They certainly weren't very open. The software options were very limited. But
+Sean was a bit of a geek.
+ 
+He set about reverse engineering the protocol the Powertap used to communicate with the PC and
+he developed a couple of command line utilities in the C programming language; `ptdl' and `ptunpk'.
+These utilities downloaded data from a Powertap via its serial interface saving to 'raw' files
+on disk, and then read that raw file and formatted the output for inputting into GNU plot.
+ 
+But it soon became clear that using the command line was not at all user friendly. A GUI was
+going to be required. And so, in late 2006 Sean set about writing a GUI version using the
+QT framework and moving to the C++ language (because he needed to learn QT for his new job).
+ 
+This early version had the main charts you see today, indeed a lot of that early code is still
+present. It could plot the ride, histograms and the CP curve that it is famous for.
+ 
+From 2007 with Sean leading many new people became involved and new features
+were introduced; support for SRM using the libsrm project written by Rainer Clasen. Support for
+Linux, Windows, Metrics, File Formats, Power Zones and a large number of new charts including
+a Performance Manager written by Eric Murray. Google Map written by Greg Lonnon.
+ 
+During this time the project moved from a 'hack' project to a fully fledged open source development
+project and saw Jamie Kimberley, Robert Carlsen and Justin Knotzke assist Sean in managing development
+with the introduction of a bugs database and more formalised releases for Linux, Mac and Windows.
+ 
+In Summer 2009 a lot of the current developers joined the project, notably Damien Grauser who added
+much needed support for interval analysis and Mark Liversedge who contributed WKO+ file support and
+the 3d plot. Over the next 12 months v2.0 was developed introducing the training View (with Justin Knotzke)
+as well as the editor and tools, metadata and long term plotting charts.
+ 
+At the tail end of 2010 Sean handed leadership of the project to Mark. Sean was no longer racing and most
+develpoment was now being delivered by others anyway. So in January 2011 Mark merged a number of features
+that were being developed in private into the main repository and thus V3 development began.
+ 
+In Spring 2013, after 3 years of development version 3 was released, along with this user guide.
+ 
+Version 3 is a landmark release and provides a platform for future development - the modular views and
+configurable layouts means it will be very easy to introduce new functionality and concepts without
+needing to adjust the underlying code. In short, v3 provides a future platform.
+
+@section Future Plans
+ 
+Version 3.1 is already being planned and the high priority features include;
+
+@itemize @bullet 
+@item Planning functions centred around the concept of an interactive performance manager chart
+where you set target events and physical adaptations or performance targets with a progression of
+daily stress and long term stress.
+ 
+@item Interval Analysis and Comparison across separate rides, to compare efforts and track and rank
+performance in intervals or 'segments' of rides and routes.
+ 
+@item Season by Season progression to compare and rank performance development in cycles and seasons
+across the long term charts, but also the critical power and distribution charts.
+ 
+@item Separation of the training view into a separate program 'OpenTrainer' to enable more advanced
+graphical displays including video with overlay and animations.
+@end itemize
+ 
+Version 3.1, hopefully, will not take so long to come to fruition and is currently targetted for Spring
+2014.
+ 
+@c ********************************************************************************
+@c Quick start guide
+@c ********************************************************************************
+@chapter QUICK START GUIDE
+@node QUICK
+
+For those of you that are new to GoldenCheetah this section gets you up and running
+with the software and using its basic features. For those of you with experience of
+GoldenCheetah from previous releases, you might like to skip this chapter.
+ 
+@section Downloading and Installing
+There are four ways to get GoldenCheetah onto your PC and available for use:
+@itemize @bullet
+
+@item @strong{Download a Stable release build} - We maintain a stable release binary for download and installation
+on the GoldenCheetah website, at @url{www.goldencheetah.org/download}.
+
+@item @strong{Download a Development build}  - We also provide regular build updated of the
+very latest code on the GoldenCheetah development build website, at @url{www.stand2surf.net}.
+
+@item @strong{Build from Source} - Since we provide the source code for the program
+you can get the source from GitHub and build your own.  But unless you plan on
+contributing to the project this is probably a pointless exercise. You
+could just use the pre-built binaries described above.
+
+@item @strong{Apt-get install} - If you are running a Linux distro you can get the GoldenCheetah
+binary and dependencies installed via apt-get. It is worth noting that at the time of writing
+the V3 build has not yet been packaged.
+
+@end itemize
+
+Once you have the binary installed you can go ahead and run it, it doesn't need any
+configuration before you start.
+ 
+@section Running for the first time
+
+When you run GoldenCheetah for the very first time it will prompt you with the Athlete 
+selection dialog box. In GoldenCheetah we allow you to create as many athletes as you
+like. This may sound like it is only useful for coaches, but in fact you may want to
+set up a scratch athlete to play and learn.
+
+Either way in this first run you will not have an athlete created, and will see a blank
+dialog, asking you to select or create an athlete to work with:
+
+@vskip 12pt
+@center @image{"image/1-noathlete",140pt}
+@center @emph{Figure 1: Initial Dialog}
+@vskip 6pt
+
+At this point you should go ahead and click 'New...'. This will open another dialog
+window to create a new athlete and set some basic data. 
+
+@vskip 12pt
+@center @image{"image/1-newathlete",140pt}
+@center @emph{Figure 2: New Athlete Dialog}
+@vskip 6pt
+
+Whilst it is possible to configure these values in preferences or within an individual activity
+you should go ahead and set up as much of the data as accurately as possible. These values
+are used as defaults in many metric calculations. 
+
+If you click on the blank athlete icon on the right it is possible to set an image for the athlete
+too. This isn't used anywhere at present, but that may change in the future.
+
+The LTHR value is the HR at which the onset of blood lactate accumulates, whilst the CP value is
+the maximum theoretical watts you can hold for an hour. It is very similar to your FTP (if that
+is a term you understand).
+
+Once you're happy with the settings click save and you will then be able to select your new athlete
+in that initial dialog (except of course there is now an athlete listed). Go ahead and open that
+athlete and you wil be greeted with GoldenCheetah, but a splash page.
+
+@vskip 12pt
+@center @image{"image/1-blankstate",280pt}
+@center @emph{Figure 3: Analysis view splash screen}
+@vskip 6pt
+
+This page is shown because there is no data associated with this athlete. We need to go ahead and
+download some data from your bike computer or import some data from disk or USB.
+
+@section Downloading a ride from device
+
+If you use a Powertap, SRM, Joule, Joule GPS or Macro-X device you will be able to download from
+it directly. Please make sure the device is conected and plugged in correctly. For example, if you
+are downloading from a Powertap please make sure the computer is firmly connected and displays
+'HOST' on its screen.
+
+@vskip 12pt
+@center @image{"image/1-download",210pt}
+@center @emph{Figure 4: Download Dialog}
+@vskip 6pt
+
+To start the download go ahead and click the download from device button. This will open up the 
+download dialog. Select the right kind of device and serial port before clicking on the 'Download'
+button. If no serial port is listed, or the port is not correct you can click on the 'Rescan' 
+button to look again for your device. This is sometimes required if you click on 'Download' before
+the device is connected.
+
+Any ride files will then be downloaded and imported into GoldenCheetah and the splash screen will
+disappear to reveal the Analysis view of GoldenCheetah. Congratulations - you can now start using
+GoldenCheetah to analyse and track your performance.
+ 
+@section Importing data from file 
+
+To import files into GoldenCheetah you have a couple of options. You can drag and drop them from 
+a file explorer or from the desktop into the main GoldenCheetah window, or you can select them via 
+the import files button on the splash screen.  Once you have done either the import activity 
+wizard will appear to process the selected files.
+
+@vskip 12pt
+@center @image{"image/1-import",280pt}
+@center @emph{Figure 4: Import Activity Wizard}
+@vskip 6pt
+
+You will notice that the files are opened first to ensure you have the required permissions to 
+read them before being validated. Once validated the dialog will prompt you to edit any of the dates 
+(some file formats do not include date information). Once you have set the dates (if needed) you can 
+click on save to complete the import and save the files to disk.
+ 
+The splash screen will now disapper and reveal the main GoldenCheetah analysis view and you can
+now start analysing and tracking your performance.
+
+@c ********************************************************************************
+@c Basic Navigation
+@c ********************************************************************************
+@chapter GETTING AROUND GOLDENCHEETAH
+@node NAVIGATION
+ 
+open up with screen shot and a description of all the basic ui elements, one per athlete etc
+ 
+@section The Toolbar
+what the buttons do
+ 
+@section Views & Sidebar
+scopebar, sidebar, tab/tiled, add chart menu
+ 
+@section Searching and Filtering
+free text search and basics of data filtering
+ 
+@section Adding and adjusting charts
+the dialog, title, settings, finding them again
+ 
+@section Going fullscreen
+key sequences, hiding and showing the toolbar
+screensaver?
+ 
+@section The Metric database
+why, what, where, refreshing, exporting
+ 
+ 
+@c ********************************************************************************
+@c Working with Data
+@c ********************************************************************************
+ 
+@chapter IMPORTING EXPORTING DOWNLOADING AND CREATING DATA
+@node DATA
+ 
+@section Download from device
+download dialog, basics for each device (plugging in etc)
+ 
+@section Import from file
+selecting a file, the import wizard
+ 
+@section Manual activity
+the manual activity dialog and refer to details screen for more "indepth" (need a better word) stuff
+ 
+@section Exporting data
+   i A single ride
+  ii Multiple rides
+ 
+@section Uploading and Downloading from the Cloud
+   i TrainingPeaks
+  ii Strava
+ iii TrainingStage Buch
+  iv RideWithGPS
+ 
+ 
+@c ********************************************************************************
+@c ANALYSIS
+@c ********************************************************************************
+ 
+@chapter THE ANALYSIS VIEW
+@node ANALYSIS
+ 
+@section About Activities and Intervals
+ 
+@section Sidebar actions and context menus
+      o activities
+      o intervals
+ 
+@section Editing and adjusting data
+     o using the editor
+       i basics
+      ii anomalies
+     iii find
+     o advanced editor functions
+       i the 'fix' tools
+      ii copying, cutting and pasting
+ 
+@c ********************************************************************************
+@c ANALYSIS CHARTS
+@c ********************************************************************************
+@chapter Analysis View Charts
+@node ANALYSIS CHARTS
+       i Activity Summary
+      ii Details
+     iii Summary and Details
+      iv Editor
+       v Performance
+      vi Critical Mean Maximals
+     vii Histogram
+    viii Pedal Force vs Velocity
+      ix Heartrate vs Power
+       x Google Map
+      xi Bing Map
+     xii 2d Plot
+    xiii 3d Plot
+     xiv Aerolab Chung Analysis
+ 
+@c ********************************************************************************
+@c HOME
+@c ********************************************************************************
+@chapter THE HOME VIEW
+@node HOME
+ 
+@section About Date Ranges, Seasons and Events
+ 
+@c ********************************************************************************
+@c HOME CHARTS
+@c ********************************************************************************
+@chapter Performance Tracking Charts
+@node HOME CHARTS
+       i Long Term Metrics
+         - indepth howto incl. setting up a PMC++
+      ii Performance Manager
+     iii Collection TreeMap
+      iv Critical Mean Maximal
+       v Distribution
+ 
+@c ********************************************************************************
+@c DIARY
+@c ********************************************************************************
+@chapter THE DIARY VIEW
+@node DIARY
+ 
+@section Purpose
+ 
+@section Summarising for Day / Week / Month
+ 
+@section Longer term purpose (planning)
+ 
+@c ********************************************************************************
+@c TRAIN
+@c ********************************************************************************
+@chapter THE TRAIN VIEW
+@node TRAIN
+ 
+@section About Devices, Workouts and Video
+ 
+@section Sidebar actions and context menus
+      o devices
+      o workouts
+      o media
+ 
+@section Working with the Workout Library
+   - Creating a new Workout
+   - Getting Workouts from ErgDB
+  
+@section Setting up and starting a workout
+    - Using CT handlebar controller
+    - controlling workout from mouse + keyboard
+ 
+@c ********************************************************************************
+@c TRAIN CHARTS
+@c ********************************************************************************
+@chapter Training View Charts
+@node TRAIN CHARTS
+        i Telemetry
+       ii Workout
+      iii Realtime
+       iv Pedal Stroke
+        v Map
+       vi StreetView
+      vii Video Player
+ 
+ 
+@c ********************************************************************************
+@c Configuration
+@c ********************************************************************************
+@chapter CONFIGURING
+@node CONFIG
+ 
+Intro and explain opening the Preferences Pane
+ 
+@section General
+ 
+@section Athlete
+     i About
+    ii Power Zones
+   iii HR Zones
+ 
+@section Passwords
+    i General
+   ii Withings
+  iii Zeo
+   iv Google Calendar (calDAV)
+ 
+@section Appearance
+ 
+@section Data Fields
+   i Fields
+  ii Notes Keywords
+ iii Processing
+ 
+@section Metrics
+  
+@section Train Devices
+   i Using Multiple Devices
+  ii Adding a device
+ 
+@c ********************************************************************************
+@c Appendices
+@c ********************************************************************************
+@unnumbered Appendix A Supported Devices, Formats & Services
+@unnumbered B Metrics Reference
+@unnumbered B Data Filtering Reference
+@unnumbered C Glossary & Resources
+@unnumbered D OS Specifics (Directories, Drivers and Permissions)
+ 
+@unnumbered Index
+@printindex cp
+ 
+@bye
