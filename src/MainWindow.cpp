@@ -410,6 +410,8 @@ MainWindow::MainWindow(const QDir &home) :
     head = new GcToolBar(this);
 
     QCleanlooksStyle *toolStyle = new QCleanlooksStyle();
+    QPalette metal;
+    metal.setColor(QPalette::Button, QColor(215,215,215));
 
     // get those icons
     importIcon = iconFromPNG(":images/mac/download.png");
@@ -431,6 +433,7 @@ MainWindow::MainWindow(const QDir &home) :
     import->setFixedHeight(25);
     import->setStyle(toolStyle);
     import->setToolTip(tr("Download from Device"));
+    import->setPalette(metal);
     connect(import, SIGNAL(clicked(bool)), this, SLOT(downloadRide()));
 
     compose = new QPushButton(this);
@@ -439,6 +442,7 @@ MainWindow::MainWindow(const QDir &home) :
     compose->setFixedHeight(25);
     compose->setStyle(toolStyle);
     compose->setToolTip(tr("Create Manual Activity"));
+    compose->setPalette(metal);
     connect(compose, SIGNAL(clicked(bool)), this, SLOT(manualRide()));
 
     sidebar = new QPushButton(this);
@@ -447,6 +451,7 @@ MainWindow::MainWindow(const QDir &home) :
     sidebar->setFixedHeight(25);
     sidebar->setStyle(toolStyle);
     sidebar->setToolTip(tr("Toggle Sidebar"));
+    sidebar->setPalette(metal);
     connect(sidebar, SIGNAL(clicked(bool)), this, SLOT(toggleSidebar()));
 
     actbuttons = new QtSegmentControl(this);
@@ -461,6 +466,7 @@ MainWindow::MainWindow(const QDir &home) :
     actbuttons->setSegmentToolTip(0, tr("Find Intervals"));
     actbuttons->setSegmentToolTip(1, tr("Split Activity"));
     actbuttons->setSegmentToolTip(2, tr("Delete Activity"));
+    actbuttons->setPalette(metal);
     connect(actbuttons, SIGNAL(segmentSelected(int)), this, SLOT(actionClicked(int)));
 
     styleSelector = new QtSegmentControl(this);
@@ -473,6 +479,7 @@ MainWindow::MainWindow(const QDir &home) :
     styleSelector->setSegmentToolTip(1, tr("Tiled View"));
     styleSelector->setSelectionBehavior(QtSegmentControl::SelectOne); //wince. spelling. ugh
     styleSelector->setFixedHeight(25);
+    styleSelector->setPalette(metal);
     connect(styleSelector, SIGNAL(segmentSelected(int)), this, SLOT(setStyleFromSegment(int))); //avoid toggle infinitely
 
     head->addWidget(spacerl);
@@ -555,10 +562,18 @@ MainWindow::MainWindow(const QDir &home) :
     listView = new RideNavigator(this, true);
     listView->setProperty("nomenu", true);
 
+    // sidebar items
+    gcCalendar = new GcCalendar(this);
+    gcMultiCalendar = new GcMultiCalendar(this);
+
     // we need to connect the search box on Linux/Windows
 #if !defined (Q_OS_MAC) && defined (GC_HAVE_LUCENE)
     connect(searchBox, SIGNAL(searchResults(QStringList)), listView, SLOT(searchStrings(QStringList)));
+    connect(searchBox, SIGNAL(searchResults(QStringList)), gcCalendar, SLOT(setFilter(QStringList)));
+    connect(searchBox, SIGNAL(searchResults(QStringList)), gcMultiCalendar, SLOT(setFilter(QStringList)));
     connect(searchBox, SIGNAL(searchClear()), listView, SLOT(clearSearch()));
+    connect(searchBox, SIGNAL(searchClear()), gcCalendar, SLOT(clearFilter()));
+    connect(searchBox, SIGNAL(searchClear()), gcMultiCalendar, SLOT(clearFilter()));
 #endif
     // retrieve settings (properties are saved when we close the window)
     if (appsettings->cvalue(cyclist, GC_NAVHEADINGS, "").toString() != "") {
@@ -609,7 +624,6 @@ MainWindow::MainWindow(const QDir &home) :
     intervalSplitter->setCollapsible(1, false);
 
     GcSplitterItem *calendarItem = new GcSplitterItem(tr("Calendar"), iconFromPNG(":images/sidebar/calendar.png"), this);
-    gcMultiCalendar = new GcMultiCalendar(this);
     calendarItem->addWidget(gcMultiCalendar);
 
     analItem = new GcSplitterItem(tr("Activities"), iconFromPNG(":images/sidebar/folder.png"), this);
@@ -719,7 +733,6 @@ MainWindow::MainWindow(const QDir &home) :
     // POPULATE TOOLBOX
 
     // do controllers after home windows -- they need their first signals caught
-    gcCalendar = new GcCalendar(this);
     connect(gcCalendar, SIGNAL(dateRangeChanged(DateRange)), this, SLOT(dateRangeChangedDiary(DateRange)));
 
     ltmSidebar = new LTMSidebar(this, home);
@@ -1349,18 +1362,15 @@ MainWindow::intervalPopup()
 
         // we can zoom, rename etc if only 1 interval is selected
         QAction *actZoomInt = new QAction(tr("Zoom to interval"), intervalWidget);
-        QAction *actRenameInt = new QAction(tr("Rename interval"), intervalWidget);
         QAction *actEditInt = new QAction(tr("Edit interval"), intervalWidget);
         QAction *actDeleteInt = new QAction(tr("Delete interval"), intervalWidget);
 
         connect(actZoomInt, SIGNAL(triggered(void)), this, SLOT(zoomIntervalSelected(void)));
-        connect(actRenameInt, SIGNAL(triggered(void)), this, SLOT(renameIntervalSelected(void)));
         connect(actEditInt, SIGNAL(triggered(void)), this, SLOT(editIntervalSelected(void)));
         connect(actDeleteInt, SIGNAL(triggered(void)), this, SLOT(deleteIntervalSelected(void)));
 
         menu.addAction(actZoomInt);
         menu.addAction(actEditInt);
-        menu.addAction(actRenameInt);
         menu.addAction(actDeleteInt);
     }
 
@@ -1386,13 +1396,11 @@ MainWindow::showContextMenuPopup(const QPoint &pos)
 
         activeInterval = (IntervalItem *)trItem;
 
-        QAction *actRenameInt = new QAction(tr("Rename interval"), intervalWidget);
         QAction *actEditInt = new QAction(tr("Edit interval"), intervalWidget);
         QAction *actDeleteInt = new QAction(tr("Delete interval"), intervalWidget);
         QAction *actZoomInt = new QAction(tr("Zoom to interval"), intervalWidget);
         QAction *actFrontInt = new QAction(tr("Bring to Front"), intervalWidget);
         QAction *actBackInt = new QAction(tr("Send to back"), intervalWidget);
-        connect(actRenameInt, SIGNAL(triggered(void)), this, SLOT(renameInterval(void)));
         connect(actEditInt, SIGNAL(triggered(void)), this, SLOT(editInterval(void)));
         connect(actDeleteInt, SIGNAL(triggered(void)), this, SLOT(deleteInterval(void)));
         connect(actZoomInt, SIGNAL(triggered(void)), this, SLOT(zoomInterval(void)));
@@ -1401,7 +1409,6 @@ MainWindow::showContextMenuPopup(const QPoint &pos)
 
         menu.addAction(actZoomInt);
         menu.addAction(actEditInt);
-        menu.addAction(actRenameInt);
         menu.addAction(actDeleteInt);
         menu.exec(intervalWidget->mapToGlobal( pos ));
     }
@@ -2772,9 +2779,13 @@ MainWindow::searchTextChanged(QString text)
     // clear or set...
     if (text == "") {
         listView->clearSearch();
+        gcCalendar->clearFilter();
+        gcMultiCalendar->clearFilter();
     } else {
         lucene->search(text);
         listView->searchStrings(lucene->files());
+        gcCalendar->setFilter(lucene->files());
+        gcMultiCalendar->setFilter(lucene->files());
     }
 #endif
 }
