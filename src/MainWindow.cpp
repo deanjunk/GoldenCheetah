@@ -221,7 +221,15 @@ MainWindow::MainWindow(const QDir &home) :
         font.setPointSize(app.defaultFont);
         QApplication::setFont(font);
 
-    } else setGeometry(geom.toRect());
+    } else {
+        QRect size = desktop->availableGeometry();
+
+        // ensure saved geometry isn't greater than current screen size
+        if ((geom.toRect().height() > size.height()) || (geom.toRect().width() > size.width()))
+            setGeometry(size);
+        else
+            setGeometry(geom.toRect());
+    }
 
 
 #ifdef Q_OS_MAC // MAC NATIVE TOOLBAR
@@ -1807,7 +1815,7 @@ MainWindow::dropEvent(QDropEvent *event)
  *--------------------------------------------------------------------*/
 
 void
-MainWindow::addRide(QString name, bool /* bSelect =true*/)
+MainWindow::addRide(QString name, bool dosignal)
 {
     QDateTime dt;
     if (!parseRideFileName(name, &dt)) {
@@ -1830,7 +1838,7 @@ MainWindow::addRide(QString name, bool /* bSelect =true*/)
         }
         ++index;
     }
-    rideAdded(last); // here so emitted BEFORE rideSelected is emitted!
+    if (dosignal) rideAdded(last); // here so emitted BEFORE rideSelected is emitted!
     allRides->insertChild(index, last);
 
     // if it is the very first ride, we need to select it

@@ -33,7 +33,7 @@
 #include <math.h>
 
 RideSummaryWindow::RideSummaryWindow(MainWindow *mainWindow, bool ridesummary) :
-     GcChartWindow(mainWindow), mainWindow(mainWindow), ridesummary(ridesummary), useCustom(false), useToToday(false)
+     GcChartWindow(mainWindow), mainWindow(mainWindow), ridesummary(ridesummary), useCustom(false), useToToday(false), filtered(false)
 {
     setInstanceName("Ride Summary Window");
     setRideItem(NULL);
@@ -53,6 +53,15 @@ RideSummaryWindow::RideSummaryWindow(MainWindow *mainWindow, bool ridesummary) :
         cl->setContentsMargins(0,0,0,0);
         cl->setSpacing(0);
         setControls(c);
+
+#ifdef GC_HAVE_LUCENE
+        // filter / searchbox
+        searchBox = new SearchFilterBox(this, mainWindow);
+        connect(searchBox, SIGNAL(searchClear()), this, SLOT(clearFilter()));
+        connect(searchBox, SIGNAL(searchResults(QStringList)), this, SLOT(setFilter(QStringList)));
+        cl->addRow(new QLabel(tr("Filter")), searchBox);
+        cl->addWidget(new QLabel("")); //spacing
+#endif
 
         cl->addRow(new QLabel(tr("Date range")), dateSetting);
     }
@@ -92,6 +101,24 @@ RideSummaryWindow::RideSummaryWindow(MainWindow *mainWindow, bool ridesummary) :
     }
     setChartLayout(vlayout);
 }
+
+#ifdef GC_HAVE_LUCENE
+void
+RideSummaryWindow::clearFilter()
+{
+    filters.clear();
+    filtered = false;
+    refresh();
+}
+
+void
+RideSummaryWindow::setFilter(QStringList list)
+{
+    filters = list;
+    filtered = true;
+    refresh();
+}
+#endif
 
 void
 RideSummaryWindow::rideSelected()
@@ -179,15 +206,18 @@ RideSummaryWindow::htmlSummary() const
 
     // device summary for ride summary, otherwise how many activities?
     if (ridesummary) summary += ("<p><h3>" + tr("Device Type: ") + ride->deviceType() + "</h3><p>");
-    else summary += ("<p><h3>" + 
-                    QString("%1").arg(data.count()) + (data.count() == 1 ? tr(" activity") : tr(" activities")) +
-                    "</h3><p>");
 
     // All the metrics we will display
     static const QStringList columnNames = QStringList() << tr("Totals") << tr("Averages") << tr("Maximums") << tr("Metrics*");
     static const QStringList totalColumn = QStringList()
         << "workout_time"
         << "time_riding"
+        << "total_distance"
+        << "total_work"
+        << "elevation_gain";
+
+    static const QStringList rtotalColumn = QStringList()
+        << "workout_time"
         << "total_distance"
         << "total_work"
         << "elevation_gain";
@@ -312,7 +342,7 @@ RideSummaryWindow::htmlSummary() const
 
                  // get the value - from metrics or from data array
                  if (ridesummary) s = s.arg(time_to_string(metrics.getForSymbol(symbol)));
-                 else s = s.arg(SummaryMetrics::getAggregated(symbol, data, useMetricUnits));
+                 else s = s.arg(SummaryMetrics::getAggregated(symbol, data, filters, filtered, useMetricUnits));
 
              } else {
                  if (m->units(useMetricUnits) != "") s = s.arg(" (" + m->units(useMetricUnits) + ")");
@@ -328,7 +358,7 @@ RideSummaryWindow::htmlSummary() const
 
                     double pace;
                     if (ridesummary) pace  = metrics.getForSymbol(symbol) * (useMetricUnits ? 1 : m->conversion()) + (useMetricUnits ? 0 : m->conversionSum());
-                    else pace = SummaryMetrics::getAggregated(symbol, data, useMetricUnits).toDouble();
+                    else pace = SummaryMetrics::getAggregated(symbol, data, filters, filtered, useMetricUnits).toDouble();
 
                     s = s.arg(QTime(0,0,0,0).addSecs(pace*60).toString("mm:ss"));
 
@@ -337,7 +367,7 @@ RideSummaryWindow::htmlSummary() const
                     // get the value - from metrics or from data array
                     if (ridesummary) s = s.arg(metrics.getForSymbol(symbol) * (useMetricUnits ? 1 : m->conversion())
                                                + (useMetricUnits ? 0 : m->conversionSum()), 0, 'f', m->precision());
-                    else s = s.arg(SummaryMetrics::getAggregated(symbol, data, useMetricUnits));
+                    else s = s.arg(SummaryMetrics::getAggregated(symbol, data, filters, filtered, useMetricUnits));
                  }
             }
 
@@ -356,7 +386,7 @@ RideSummaryWindow::htmlSummary() const
 
             // if using metrics or data
             if (ridesummary) time_in_zone[i] = metrics.getForSymbol(timeInZones[i]);
-            else time_in_zone[i] = SummaryMetrics::getAggregated(timeInZones[i], data, useMetricUnits, true).toDouble();
+            else time_in_zone[i] = SummaryMetrics::getAggregated(timeInZones[i], data, filters, filtered, useMetricUnits, true).toDouble();
         }
         summary += tr("<h3>Power Zones</h3>");
         summary += mainWindow->zones()->summarize(rideItem->zoneRange(), time_in_zone); //aggregating
@@ -371,7 +401,7 @@ RideSummaryWindow::htmlSummary() const
 
             // if using metrics or data
             if (ridesummary) time_in_zone[i] = metrics.getForSymbol(timeInZonesHR[i]);
-            else time_in_zone[i] = SummaryMetrics::getAggregated(timeInZonesHR[i], data, useMetricUnits, true).toDouble();
+            else time_in_zone[i] = SummaryMetrics::getAggregated(timeInZonesHR[i], data, filters, filtered, useMetricUnits, true).toDouble();
         }
 
         summary += tr("<h3>Heart Rate Zones</h3>");
@@ -451,6 +481,102 @@ RideSummaryWindow::htmlSummary() const
             }
             summary += "</table>";
         }
+    }
+
+    //
+    // If summarising a date range show metrics for each ride in the date range
+    //
+    if (!ridesummary) {
+
+        int j;
+
+        // some people have a LOT of metrics, so we only show so many since
+        // you quickly run out of screen space, but if they have > 4 we can
+        // take out elevation and work from the totals/
+        // But only show a maximum of 7 metrics
+        int totalCols;
+        if (metricColumn.count() > 4) totalCols = 2;
+        else totalCols = rtotalColumn.count();
+        int metricCols = metricColumn.count() > 7 ? 7 : metricColumn.count();
+
+        summary += ("<p><h3>" + 
+                    QString("%1").arg(data.count()) + (data.count() == 1 ? tr(" activity") : tr(" activities")) +
+                    "</h3><p>");
+        
+        // table of activities
+        summary += "<table align=\"center\" width=\"80%\" border=\"0\">";
+
+        // header row 1 - name
+        summary += "<tr>";
+        summary += tr("<td align=\"center\">Date</td>");
+        for (j = 0; j< totalCols; ++j) {
+            QString symbol = rtotalColumn[j];
+            const RideMetric *m = factory.rideMetric(symbol);
+
+            summary += QString("<td align=\"center\">%1</td>").arg(m->name());
+        }
+        for (j = 0; j< metricCols; ++j) {
+            QString symbol = metricColumn[j];
+            const RideMetric *m = factory.rideMetric(symbol);
+
+            summary += QString("<td align=\"center\">%1</td>").arg(m->name());
+        }
+        summary += "</tr>";
+
+        // header row 2 - units
+        summary += "<tr>";
+        summary += tr("<td align=\"center\"></td>"); // date no units
+        for (j = 0; j< totalCols; ++j) {
+            QString symbol = rtotalColumn[j];
+            const RideMetric *m = factory.rideMetric(symbol);
+
+            QString units = m->units(useMetricUnits);
+            if (units == tr("seconds")) units = "";
+            summary += QString("<td align=\"center\">%1</td>").arg(units);
+        }
+        for (j = 0; j< metricCols; ++j) {
+            QString symbol = metricColumn[j];
+            const RideMetric *m = factory.rideMetric(symbol);
+
+            QString units = m->units(useMetricUnits);
+            if (units == tr("seconds")) units = "";
+            summary += QString("<td align=\"center\">%1</td>").arg(units);
+        }
+        summary += "</tr>";
+
+        // activities 1 per row
+        bool even = false;
+        foreach (SummaryMetrics rideMetrics, data) {
+
+            if (even) summary += "<tr>";
+            else {
+                    QColor color = QApplication::palette().alternateBase().color();
+                    color = QColor::fromHsv(color.hue(), color.saturation() * 2, color.value());
+                    summary += "<tr bgcolor='" + color.name() + "'>";
+            }
+            even = !even;
+
+            // date of ride
+            summary += QString("<td align=\"center\">%1</td>")
+                       .arg(rideMetrics.getRideDate().date().toString("dd MMM yyyy"));
+
+            for (j = 0; j< totalCols; ++j) {
+                QString symbol = rtotalColumn[j];
+
+                // get this value
+                QString value = rideMetrics.getStringForSymbol(symbol,useMetricUnits);
+                summary += QString("<td align=\"center\">%1</td>").arg(value);
+            }
+            for (j = 0; j< metricCols; ++j) {
+                QString symbol = metricColumn[j];
+
+                // get this value
+                QString value = rideMetrics.getStringForSymbol(symbol,useMetricUnits);
+                summary += QString("<td align=\"center\">%1</td>").arg(value);
+            }
+            summary += "</tr>";
+        }
+        summary += "</table><br>";
     }
 
     // sumarise errors reading file if it was a ride summary
