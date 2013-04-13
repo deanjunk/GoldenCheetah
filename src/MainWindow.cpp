@@ -98,7 +98,6 @@
 #include "QtMacButton.h" // mac
 #include "QtMacPopUpButton.h" // mac
 #include "QtMacSegmentedButton.h" // mac
-#include "QtMacSearchBox.h" // mac
 #else
 #include "QTFullScreen.h" // not mac!
 #include "../qtsolutions/segmentcontrol/qtsegmentcontrol.h"
@@ -145,7 +144,7 @@ QList<MainWindow *> mainwindows; // keep track of all the MainWindows we have op
 QDesktopWidget *desktop = NULL;
 
 MainWindow::MainWindow(const QDir &home) :
-    home(home), session(0), isclean(false), ismultisave(false),
+    home(home), session(0), isclean(false), ismultisave(false), isfiltered(false),
     zones_(new Zones), hrzones_(new HrZones),
     ride(NULL), workout(NULL), groupByMapper(NULL)
 {
@@ -161,6 +160,15 @@ MainWindow::MainWindow(const QDir &home) :
     WFApi *w = WFApi::getInstance(); // ensure created on main thread
     w->apiVersion();//shutup compiler
     #endif
+
+    // Metadata fields
+    _rideMetadata = new RideMetadata(this,true);
+    _rideMetadata->hide();
+
+    #ifdef GC_HAVE_LUCENE
+    namedSearches = new NamedSearches(home); // must be before navigator
+    #endif
+
     if (desktop == NULL) desktop = QApplication::desktop();
     static const QIcon hideIcon(":images/toolbar/main/hideside.png");
     static const QIcon rhideIcon(":images/toolbar/main/hiderside.png");
@@ -225,8 +233,8 @@ MainWindow::MainWindow(const QDir &home) :
         QRect size = desktop->availableGeometry();
 
         // ensure saved geometry isn't greater than current screen size
-        if ((geom.toRect().height() > size.height()) || (geom.toRect().width() > size.width()))
-            setGeometry(size);
+        if ((geom.toRect().height() >= size.height()) || (geom.toRect().width() >= size.width()))
+            setGeometry(size.x()+30,size.y()+30,size.width()-60,size.height()-60);
         else
             setGeometry(geom.toRect());
     }
@@ -312,9 +320,11 @@ MainWindow::MainWindow(const QDir &home) :
     head->addWidget(viewsel);
 
 #ifdef GC_HAVE_LUCENE
-    QtMacSearchBox *searchBox = new QtMacSearchBox(this);
+    SearchFilterBox *searchBox = new SearchFilterBox(this,this);
+    QCleanlooksStyle *toolStyle = new QCleanlooksStyle();
+    searchBox->setStyle(toolStyle);
+    searchBox->setFixedWidth(250);
     head->addWidget(searchBox);
-    connect(searchBox, SIGNAL(textChanged(QString)), this, SLOT(searchTextChanged(QString)));
 #endif
 
 #endif // MAC NATIVE TOOLBAR AND SCOPEBAR
@@ -380,9 +390,6 @@ MainWindow::MainWindow(const QDir &home) :
      * Central instances of shared data
      *--------------------------------------------------------------------*/
 
-    // Metadata fields
-    _rideMetadata = new RideMetadata(this,true);
-    _rideMetadata->hide();
 #ifdef GC_HAVE_LUCENE
     lucene = new Lucene(this, this); // before metricDB attempts to refresh
 #endif
@@ -410,9 +417,6 @@ MainWindow::MainWindow(const QDir &home) :
      * Non-Mac Toolbar
      *--------------------------------------------------------------------*/
 
-#ifdef GC_HAVE_LUCENE
-    namedSearches = new NamedSearches(home); // must be before navigator
-#endif
 #ifndef Q_OS_MAC
 
     head = new GcToolBar(this);
@@ -575,13 +579,19 @@ MainWindow::MainWindow(const QDir &home) :
     gcMultiCalendar = new GcMultiCalendar(this);
 
     // we need to connect the search box on Linux/Windows
-#if !defined (Q_OS_MAC) && defined (GC_HAVE_LUCENE)
+#ifdef GC_HAVE_LUCENE
+
+    // link to the sidebars
     connect(searchBox, SIGNAL(searchResults(QStringList)), listView, SLOT(searchStrings(QStringList)));
     connect(searchBox, SIGNAL(searchResults(QStringList)), gcCalendar, SLOT(setFilter(QStringList)));
     connect(searchBox, SIGNAL(searchResults(QStringList)), gcMultiCalendar, SLOT(setFilter(QStringList)));
     connect(searchBox, SIGNAL(searchClear()), listView, SLOT(clearSearch()));
     connect(searchBox, SIGNAL(searchClear()), gcCalendar, SLOT(clearFilter()));
     connect(searchBox, SIGNAL(searchClear()), gcMultiCalendar, SLOT(clearFilter()));
+
+    // and global for charts AFTER sidebars
+    connect(searchBox, SIGNAL(searchResults(QStringList)), this, SLOT(searchResults(QStringList)));
+    connect(searchBox, SIGNAL(searchClear()), this, SLOT(searchClear()));
 #endif
     // retrieve settings (properties are saved when we close the window)
     if (appsettings->cvalue(cyclist, GC_NAVHEADINGS, "").toString() != "") {
@@ -1012,6 +1022,13 @@ MainWindow::showSidebar(bool want)
     if (want) {
 
         toolBox->show();
+
+        // Restore sizes
+        QVariant splitterSizes = appsettings->cvalue(cyclist, GC_SETTINGS_SPLITTER_SIZES);
+        if (splitterSizes.toByteArray().size() > 1 ) {
+            splitter->restoreState(splitterSizes.toByteArray());
+            splitter->setOpaqueResize(true); // redraw when released, snappier UI
+        }
 
         // if it was collapsed we need set to at least 200
         // unless the mainwindow isn't big enough
@@ -1496,6 +1513,23 @@ MainWindow::closeEvent(QCloseEvent* event)
             qDebug()<<"closeEvent: mainwindows list error";
 
     }
+}
+
+// global search/data filter
+void
+MainWindow::searchResults(QStringList f)
+{
+    filters = f;
+    isfiltered = true;
+    emit filterChanged(filters);
+}
+
+void
+MainWindow::searchClear()
+{
+    filters.clear();
+    isfiltered = false;
+    emit filterChanged(filters);
 }
 
 void
@@ -2516,6 +2550,7 @@ MainWindow::editInterval()
     if (dialog.exec()) {
         *activeInterval = temp;
         updateRideFileIntervals(); // will emit intervalChanged() signal
+        intervalWidget->update();
     }
 }
 
