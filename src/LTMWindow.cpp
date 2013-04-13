@@ -28,6 +28,7 @@
 
 #include <QtGui>
 #include <QString>
+#include <QDebug>
 
 #include <qwt_plot_panner.h>
 #include <qwt_plot_zoomer.h>
@@ -149,6 +150,7 @@ LTMWindow::LTMWindow(MainWindow *parent, bool useMetricUnits, const QDir &home) 
     connect(ltmTool, SIGNAL(useCustomRange(DateRange)), this, SLOT(useCustomRange(DateRange)));
     connect(ltmTool, SIGNAL(useThruToday()), this, SLOT(useThruToday()));
     connect(ltmTool, SIGNAL(useStandardRange()), this, SLOT(useStandardRange()));
+    connect(main, SIGNAL(filterChanged(QStringList&)), this, SLOT(refresh()));
 
     // connect pickers to ltmPlot
     connect(_canvasPicker, SIGNAL(pointHover(QwtPlotCurve*, int)), ltmPlot, SLOT(pointHover(QwtPlotCurve*, int)));
@@ -243,19 +245,18 @@ LTMWindow::metricSelected()
 void
 LTMWindow::dateRangeChanged(DateRange range)
 {
+    // do we need to use custom range?
     if (useCustom || useToToday) range = custom;
 
-    if (!amVisible() && !dirty) return;
-
     // we already plotted that date range
-    if (range.from == plotted.from &&
-        range.to  == plotted.to) return;
+    if (amVisible() || dirty || range.from != plotted.from || range.to  != plotted.to) {
 
-    settings.data = &results;
-    settings.measures = &measures;
+         settings.data = &results;
+         settings.measures = &measures;
 
-    // apply filter to new date range too -- will also refresh plot
-    filterChanged();
+        // apply filter to new date range too -- will also refresh plot
+        filterChanged();
+    }
 }
 
 void

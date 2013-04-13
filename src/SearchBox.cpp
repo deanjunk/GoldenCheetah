@@ -19,6 +19,7 @@
 #include "SearchBox.h"
 #include "MainWindow.h"
 #include "NamedSearch.h"
+#include "GcSideBarItem.h"
 #include <QToolButton>
 #include <QInputDialog>
 
@@ -29,13 +30,13 @@
 SearchBox::SearchBox(MainWindow *main, QWidget *parent)
     : QLineEdit(parent), main(main)
 {
-    setFixedHeight(23);
+    setFixedHeight(21);
     //clear button
     clearButton = new QToolButton(this);
     clearButton->setStyleSheet("QToolButton { border: none; padding: 0px; }");
-    QPixmap pixmap(":images/toolbar/clear.png");
+    QIcon pixmap(":images/toolbar/popbutton.png");
     clearButton->setIcon(QIcon(pixmap));
-    clearButton->setIconSize(QSize(16,16));
+    clearButton->setIconSize(QSize(12,12));
     clearButton->setCursor(Qt::ArrowCursor);
     clearButton->hide();
     //connect(clearButton, SIGNAL(clicked()), this, SLOT(clear()));
@@ -51,10 +52,10 @@ SearchBox::SearchBox(MainWindow *main, QWidget *parent)
 
     // search button
     searchButton = new QToolButton(this);
-    QPixmap search(":images/toolbar/search.png");
+    QIcon search = iconFromPNG(":images/toolbar/search3.png", false);
     searchButton->setStyleSheet("QToolButton { border: none; padding: 0px; }");
-    searchButton->setIcon(QIcon(search));
-    searchButton->setIconSize(QSize(16,16));
+    searchButton->setIcon(search);
+    searchButton->setIconSize(QSize(11,11));
     searchButton->setCursor(Qt::ArrowCursor);
     connect(searchButton, SIGNAL(clicked()), this, SLOT(toggleMode()));
 
@@ -68,11 +69,25 @@ SearchBox::SearchBox(MainWindow *main, QWidget *parent)
     setAttribute(Qt::WA_MacShowFocusRect, 0);
 #endif
     setObjectName("SearchBox");
+    QColor color = QPalette().color(QPalette::Highlight);
     setStyleSheet(QString( //"QLineEdit { padding-right: %1px; } "
                           "QLineEdit#SearchBox {"
+                          "    border-radius: 10px; "
+                          "    border: 1px solid rgba(127,127,127,127);"
                           "    padding: 0px %1px;"
                           "}"
-                 ).arg(clearButton->sizeHint().width() + frameWidth + 12));
+                          "QLineEdit#SearchBox:focus {"
+                          "    border-radius: 10px; "
+#ifdef WIN32
+                          "    border: 1px solid rgba(%2,%3,%4,255);"
+#else
+                          "    border: 2px solid rgba(%2,%3,%4,255);"
+#endif
+                          "    padding: 0px %5px;"
+                          "}"
+                 ).arg(clearButton->sizeHint().width() + frameWidth + 12)
+                  .arg(color.red()).arg(color.green()).arg(color.blue())
+                  .arg(clearButton->sizeHint().width() + frameWidth + 12));
 
     setPlaceholderText(tr("Search..."));
     mode = Search;
@@ -87,12 +102,13 @@ void SearchBox::resizeEvent(QResizeEvent *)
 {
     QSize sz = clearButton->sizeHint();
     int frameWidth = style()->pixelMetric(QStyle::PM_DefaultFrameWidth);
-    clearButton->move(rect().right() - frameWidth - sz.width(),
-                      (rect().bottom() + 1 - sz.height())/2);
-    searchButton->move(rect().left() + frameWidth,
-                      (rect().bottom() + 1 - sz.height())/2);
-    toolButton->move(rect().left() + frameWidth + 18,
-                      (rect().bottom() + 1 - sz.height())/2);
+    clearButton->move(rect().right() - frameWidth - sz.width() - 1, 3);
+    searchButton->move(5, 3);
+#ifndef Q_OS_MAC
+    toolButton->move(15, 0);
+#else
+    toolButton->move(13, 0);
+#endif
 
     //container->move(rect().left(), rect().bottom() + 3); // named dialog...
     checkMenu();
@@ -111,9 +127,9 @@ void SearchBox::setMode(SearchBoxMode mode)
 
         case Filter:
         {
-            QPixmap filter(":images/toolbar/filter.png");
-            searchButton->setIcon(QIcon(filter));
-            searchButton->setIconSize(filter.size());
+            QIcon filter = iconFromPNG(":images/toolbar/filter3.png", false);
+            searchButton->setIcon(filter);
+            searchButton->setIconSize(QSize(11,11));
             setPlaceholderText(tr("Filter..."));
         }
         break;
@@ -121,9 +137,9 @@ void SearchBox::setMode(SearchBoxMode mode)
         case Search:
         default:
         {
-            QPixmap search(":images/toolbar/search.png");
-            searchButton->setIcon(QIcon(search));
-            searchButton->setIconSize(search.size());
+            QIcon search = iconFromPNG(":images/toolbar/search3.png", false);
+            searchButton->setIcon(search);
+            searchButton->setIconSize(QSize(11,11));
             setPlaceholderText(tr("Search..."));
         }
         break;
@@ -136,7 +152,8 @@ void SearchBox::updateCloseButton(const QString& text)
     if (clearButton->isVisible() && text.isEmpty()) mode == Search ? clearQuery() : clearFilter();
     clearButton->setVisible(!text.isEmpty());
 
-    if (mode == Search) searchSubmit(); // only do search as you type in search mode
+    //REMOVED SINCE TOO HEAVY NOW AFFECTS CHARTS TOO
+    //if (mode == Search) searchSubmit(); // only do search as you type in search mode
 
     setGood(); // if user changing then don't stay red - wait till resubmitted
     checkMenu();
