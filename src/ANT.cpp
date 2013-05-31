@@ -72,6 +72,9 @@ const ant_sensor_type_t ANT::ant_sensor_types[] = {
 //
 ANT::ANT(QObject *parent, DeviceConfiguration *devConf) : QThread(parent), devConf(devConf)
 {
+    qRegisterMetaType<ANTMessage>("ANTMessage");
+    qRegisterMetaType<struct timeval>("struct timeval");
+
     // device status and settings
     Status=0;
     deviceFilename = devConf ? devConf->portSpec : "";
@@ -342,8 +345,6 @@ ANT::quit(int code)
 
     // Signal to stop logging. Moved to the end of the reading thread to
     // ensure no more messages can arrive and re-open the log file.
-    emit receivedAntMessage(NULL, NULL);
-
     exit(code);
     return 0;
 }
@@ -711,7 +712,7 @@ ANT::processMessage(void) {
 
     struct timeval timestamp;
     gettimeofday (&timestamp, NULL);
-    emit receivedAntMessage(&m, &timestamp);
+    emit receivedAntMessage(m, timestamp);
 
     switch (rxMessage[ANT_OFFSET_ID]) {
         case ANT_ACK_DATA:

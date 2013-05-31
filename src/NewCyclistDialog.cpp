@@ -124,8 +124,8 @@ NewCyclistDialog::NewCyclistDialog(QDir home) : QDialog(NULL, Qt::Dialog), home(
     all->addStretch();
 
     // dialog buttons
-    save = new QPushButton("Save", this);
-    cancel = new QPushButton("Cancel", this);
+    save = new QPushButton(tr("Save"), this);
+    cancel = new QPushButton(tr("Cancel"), this);
     QHBoxLayout *h = new QHBoxLayout;
     h->addStretch();
     h->addWidget(cancel);
@@ -184,6 +184,27 @@ NewCyclistDialog::saveClicked()
 
                 // set the last version to the latest version
                 appsettings->setCValue(name->text(), GC_VERSION_USED, GcUpgrade::version());
+
+                // nice sidebars please!
+                appsettings->setCValue(name->text(), "splitter/LTM/hide", true);
+                appsettings->setCValue(name->text(), "splitter/LTM/hide/0", false);
+                appsettings->setCValue(name->text(), "splitter/LTM/hide/1", false);
+                appsettings->setCValue(name->text(), "splitter/LTM/hide/2", false);
+                appsettings->setCValue(name->text(), "splitter/LTM/hide/3", true);
+                appsettings->setCValue(name->text(), "splitter/analysis/hide", true);
+                appsettings->setCValue(name->text(), "splitter/analysis/hide/0", false);
+                appsettings->setCValue(name->text(), "splitter/analysis/hide/1", true);
+                appsettings->setCValue(name->text(), "splitter/analysis/hide/2", false);
+                appsettings->setCValue(name->text(), "splitter/analysis/hide/3", true);
+                appsettings->setCValue(name->text(), "splitter/diary/hide", true);
+                appsettings->setCValue(name->text(), "splitter/diary/hide/0", false);
+                appsettings->setCValue(name->text(), "splitter/diary/hide/1", false);
+                appsettings->setCValue(name->text(), "splitter/diary/hide/2", true);
+                appsettings->setCValue(name->text(), "splitter/train/hide", true);
+                appsettings->setCValue(name->text(), "splitter/train/hide/0", false);
+                appsettings->setCValue(name->text(), "splitter/train/hide/1", false);
+                appsettings->setCValue(name->text(), "splitter/train/hide/2", false);
+                appsettings->setCValue(name->text(), "splitter/train/hide/3", false);
 
                 // lets setup!
                 if (unitCombo->currentIndex()==0)

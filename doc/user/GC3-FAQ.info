@@ -538,6 +538,22 @@ caldav url:
 Where xxxx is your username. The username will need to be repeated in
 the username field and obviously set the password too.
 
+5.5 When setting up my Withings wifi scales where do I get the userid and key ?
+===============================================================================
+
+You will need to login to your Withings account
+(`http://my.withings.com') and click on the `share' button at the top
+of the dashboard. From there you will get a popup box with lots of
+options.
+
+If you click on `share on my website' you will be greeted with a number
+of code snippets you can embed in a web page. If you look closely in
+the top right hand corner there will be a box containing the user id
+and public key. These are the two values you need to enter into the
+options dialog.
+
+You will now be able to retrieve withings data via the tools menu.
+
 
 File: GC3-FAQ.info,  Node: SEASONS AND EVENTS,  Next: CHARTS,  Prev: UPLOADING AND DOWNLOADING,  Up: Top
 
@@ -560,6 +576,18 @@ It is only used to annotate a LTM chart - so you can show an 'event'
 that happened at a particular date. There are no rules about what
 constitutes and event. It could be a race, a training camp or just a
 day that was particularly meaningful e.g. illness, crash.
+
+6.3 How do create/edit/delete seasons and events?
+=================================================
+
+Seasons and Events are created and edited in the sidebar for the Home
+view. Seasons are listed under date ranges, whilst events are listed
+under the events sidebar item. In both cases they can be created and
+deleted from the sidebar item's drop down menu.
+
+Please note that in v3.0 events can only be created when a user season
+is selected, since events are associated with a particular season. This
+constraint will be removed in v3.1.
 
 
 File: GC3-FAQ.info,  Node: CHARTS,  Next: INDEX,  Prev: SEASONS AND EVENTS,  Up: Top
@@ -691,11 +719,11 @@ Index
 * add:                                   MOST COMMON QUESTIONS OF ALL.
                                                               (line  20)
 * adhoc:                                 SEASONS AND EVENTS.  (line   9)
-* Aerolab <1>:                           MOST COMMON QUESTIONS OF ALL.
+* Aerolab <1>:                           CHARTS.              (line  33)
+* Aerolab:                               MOST COMMON QUESTIONS OF ALL.
                                                               (line  69)
-* Aerolab:                               CHARTS.              (line  33)
 * algorithm:                             CHARTS.              (line  19)
-* anomalies:                             DATA.                (line  38)
+* anomalies:                             DATA.                (line  23)
 * AP:                                    METRICS.             (line  80)
 * best:                                  MOST COMMON QUESTIONS OF ALL.
                                                               (line  61)
@@ -706,23 +734,22 @@ Index
 * colour:                                MOST COMMON QUESTIONS OF ALL.
                                                               (line 115)
 * contribute:                            GENERAL.             (line  73)
-* CP <1>:                                METRICS.             (line  22)
-* CP <2>:                                CHARTS.              (line  19)
-* CP:                                    METRICS.             (line  50)
+* CP <1>:                                CHARTS.              (line  19)
+* CP:                                    METRICS.             (line  22)
 * CSV:                                   DATA.                (line  88)
 * CTL:                                   METRICS.             (line  63)
 * cycle:                                 SEASONS AND EVENTS.  (line   9)
 * Daniels:                               METRICS.             (line   9)
 * donate:                                GENERAL.             (line  85)
-* download <1>:                          GENERAL.             (line  31)
-* download:                              UPLOADING AND DOWNLOADING.
+* download <1>:                          UPLOADING AND DOWNLOADING.
                                                               (line  16)
+* download:                              GENERAL.             (line  31)
 * elevation:                             METRICS.             (line  71)
 * EqP:                                   METRICS.             (line   9)
 * event:                                 SEASONS AND EVENTS.  (line  18)
 * feature:                               GENERAL.             (line  66)
 * FITLOG:                                DATA.                (line  88)
-* FTP:                                   METRICS.             (line  50)
+* FTP:                                   METRICS.             (line  22)
 * Garmin Connect:                        METRICS.             (line  80)
 * github:                                GENERAL.             (line  40)
 * Google:                                UPLOADING AND DOWNLOADING.
@@ -760,7 +787,7 @@ Index
 * TCX:                                   DATA.                (line  88)
 * trainer:                               METRICS.             (line  50)
 * TrainingPeaks:                         UPLOADING AND DOWNLOADING.
-                                                              (line  16)
+                                                              (line   9)
 * treemap:                               CHARTS.              (line  77)
 * triathlete:                            GENERAL.             (line  47)
 * TSS <1>:                               METRICS.             (line  80)
@@ -774,8 +801,10 @@ Index
                                                               (line  81)
 * weight:                                MOST COMMON QUESTIONS OF ALL.
                                                               (line  36)
+* Withings:                              UPLOADING AND DOWNLOADING.
+                                                              (line  46)
 * xPower:                                METRICS.             (line   9)
-* zoom:                                  CHARTS.              (line 108)
+* zoom:                                  CHARTS.              (line  97)
 
 
 
@@ -786,8 +815,8 @@ Node: GENERAL6062
 Node: METRICS9684
 Node: DATA16676
 Node: UPLOADING AND DOWNLOADING20606
-Node: SEASONS AND EVENTS22371
-Node: CHARTS23230
-Node: INDEX28031
+Node: SEASONS AND EVENTS23090
+Node: CHARTS24487
+Node: INDEX29288
 
 End Tag Table
