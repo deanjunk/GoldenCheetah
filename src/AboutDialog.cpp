@@ -150,15 +150,18 @@ ContributorsPage::ContributorsPage(MainWindow *main, QDir home) : main(main), ho
     contributors.append("Mark Rages");
     contributors.append("Mitsukuni Sato");
     contributors.append("Ned Harding");
+    contributors.append("Okano Takayoshi");
     contributors.append("Patrick McNerthney");
     contributors.append("Rainer Clasen");
     contributors.append("Robb Romans");
     contributors.append("Robert Carlsen");
     contributors.append("Roberto Massa");
     contributors.append("Ron Alford");
+    contributors.append("Satoru Kurashiki");
     contributors.append("Sean Rhea");
     contributors.append("Steven Gribble");
     contributors.append("Thomas Weichmann");
+    contributors.append("Tilman Schmiedeberg");
     contributors.append("Walter B&#252;rki");
 
     QString contributorsTable = "<center><table><tr>";
